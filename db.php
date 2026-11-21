@@ -38,3 +38,16 @@ function checkSubscriptionActive(array $mess): array {
     $daysLeft = max(0, (int)ceil(($expiry - $now) / 86400));
     return ['active' => ($mess['subscription_status'] === 'active' && $expiry > $now), 'label' => ucfirst($mess['subscription_plan']) . " Plan ({$daysLeft}d left)"];
 }
+
+function fmtMoney(string $currencyCode, float $amount): string {
+    $symbols = [
+        'BDT' => '৳',
+        '৳'   => '৳',
+        'INR' => '₹',
+        '₹'   => '₹',
+        'USD' => '$',
+        '$'   => '$',
+    ];
+    $sym = $symbols[$currencyCode] ?? $currencyCode;
+    return $sym . number_format($amount, 2);
+}

@@ -6,6 +6,21 @@ if (!isset($_SESSION['user_id'], $_SESSION['mess_id'])) {
     exit;
 }
 
+if (!function_exists('fmtMoney')) {
+    function fmtMoney(string $currencyCode, float $amount): string {
+        $symbols = [
+            'BDT' => '৳',
+            '৳'   => '৳',
+            'INR' => '₹',
+            '₹'   => '₹',
+            'USD' => '$',
+            '$'   => '$',
+        ];
+        $sym = $symbols[$currencyCode] ?? $currencyCode;
+        return $sym . number_format($amount, 2);
+    }
+}
+
 $messId       = (int)$_SESSION['mess_id'];
 $currentUid   = (int)$_SESSION['user_id'];
 $role         = $_SESSION['role'];
@@ -14,13 +29,14 @@ $prevMonth    = date('Y-m', strtotime($billingMonth . '-01 -1 month'));
 $today        = date('Y-m-d');
 $activeTab    = $_GET['tab'] ?? 'overview';
 $flash        = '';
+$flashError   = '';
 
 // Fetch Mess & Subscription
 $stmt = $pdo->prepare("SELECT * FROM messes WHERE id = ?");
 $stmt->execute([$messId]);
 $mess = $stmt->fetch();
 $subInfo = checkSubscriptionActive($mess);
-$cur = $mess['currency_symbol'];
+$cur = (string)($mess['currency_symbol'] ?? 'BDT');
 
 // Helper to compute full monthly financial summary for any given YYYY-MM
 function getMonthSummary(PDO $pdo, int $messId, string $month, array $members): array {
@@ -86,14 +102,14 @@ function getMonthSummary(PDO $pdo, int $messId, string $month, array $members): 
     }
 
     return [
-        'total_deposits' => $totalDeposits,
-        'total_grocery'  => $totalGrocery,
-        'total_misc'     => $totalMisc,
-        'total_meals'    => $totalMeals,
-        'cost_per_meal'  => $costPerMeal,
-        'misc_per_member'=> $miscPerMember,
-        'cash_held'      => $totalDeposits - $totalGrocery,
-        'members'        => $perMember,
+        'total_deposits'  => $totalDeposits,
+        'total_grocery'   => $totalGrocery,
+        'total_misc'      => $totalMisc,
+        'total_meals'     => $totalMeals,
+        'cost_per_meal'   => $costPerMeal,
+        'misc_per_member' => $miscPerMember,
+        'cash_held'       => $totalDeposits - ($totalGrocery + $totalMisc),
+        'members'         => $perMember,
     ];
 }
 
@@ -138,17 +154,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($targetUid === $currentUid) {
             $flashError = "You cannot delete your own manager account.";
         } else {
-            // Check deposits in current billing month
             $chkDep = $pdo->prepare("SELECT COUNT(*) FROM deposits WHERE mess_id = ? AND user_id = ? AND billing_month = ?");
             $chkDep->execute([$messId, $targetUid, $billingMonth]);
             $depCount = (int)$chkDep->fetchColumn();
 
-            // Check meals in current billing month
             $chkMeal = $pdo->prepare("SELECT COUNT(*) FROM meals WHERE mess_id = ? AND user_id = ? AND DATE_FORMAT(meal_date, '%Y-%m') = ?");
             $chkMeal->execute([$messId, $targetUid, $billingMonth]);
             $mealCount = (int)$chkMeal->fetchColumn();
 
-            // Check expenses paid by this member in current billing month
             $chkExp = $pdo->prepare("SELECT COUNT(*) FROM expenses WHERE mess_id = ? AND paid_by_user_id = ? AND billing_month = ?");
             $chkExp->execute([$messId, $targetUid, $billingMonth]);
             $expCount = (int)$chkExp->fetchColumn();
@@ -176,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($amount > 0) {
             $ins = $pdo->prepare("INSERT INTO deposits (mess_id, user_id, amount, entry_type, note, recorded_by, billing_month) VALUES (?, ?, ?, 'deposit', ?, ?, ?)");
             $ins->execute([$messId, $targetUid, $amount, $note, $currentUid, $billingMonth]);
-            $flash = "Deposit of {$cur}" . number_format($amount, 2) . " recorded.";
+            $flash = "Deposit of " . fmtMoney($cur, $amount) . " recorded.";
         }
     }
 
@@ -193,15 +206,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $wrongAmount = (float)$orig['amount'];
             $diff = $correctAmount - $wrongAmount;
             if ($diff != 0) {
-                $auditNote = sprintf("Fixed Deposit #%d (Was %s%.2f → Now %s%.2f): %s", $depId, $cur, $wrongAmount, $cur, $correctAmount, $reason);
+                $auditNote = sprintf("Fixed Deposit #%d (Was %s -> Now %s): %s", $depId, fmtMoney($cur, $wrongAmount), fmtMoney($cur, $correctAmount), $reason);
                 $ins = $pdo->prepare("INSERT INTO deposits (mess_id, user_id, amount, entry_type, note, recorded_by, billing_month) VALUES (?, ?, ?, 'correction', ?, ?, ?)");
                 $ins->execute([$messId, (int)$orig['user_id'], $diff, $auditNote, $currentUid, $billingMonth]);
-                $flash = "Deposit corrected by " . ($diff > 0 ? '+' : '') . "{$cur}" . number_format($diff, 2);
+                $flash = "Deposit corrected by " . ($diff > 0 ? '+' : '') . fmtMoney($cur, $diff);
             }
         }
     }
 
-    // --- EXPENSE (GROCERY & MISC) CRUD ---
+    // --- EXPENSE (GROCERY & MISC) CRUD & AUTO-MERGE APPROVAL ---
     if ($action === 'add_expense' && $subInfo['active']) {
         $cat    = $_POST['category'] === 'misc' ? 'misc' : 'grocery';
         $desc   = trim($_POST['description']);
@@ -212,7 +225,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($amount > 0 && $desc !== '') {
             $ins = $pdo->prepare("INSERT INTO expenses (mess_id, paid_by_user_id, category, description, amount, expense_date, status, billing_month) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             $ins->execute([$messId, $paidBy, $cat, $desc, $amount, $today, $status, $billingMonth]);
-            $flash = $status === 'approved' ? ucfirst($cat) . " entry added." : "Submitted for Manager approval.";
+            $flash = $status === 'approved'
+                ? ucfirst($cat) . " entry added & merged."
+                : ucfirst($cat) . " request submitted for Manager approval & auto-merge.";
         }
     }
 
@@ -240,7 +255,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $status = $_POST['decision'] === 'approved' ? 'approved' : 'rejected';
         $upd = $pdo->prepare("UPDATE expenses SET status = ? WHERE id = ? AND mess_id = ?");
         $upd->execute([$status, $expId, $messId]);
-        $flash = "Expense marked as {$status}.";
+        $flash = $status === 'approved'
+            ? "Expense approved & auto-merged into mess totals and member ledger."
+            : "Expense request rejected.";
     }
 
     // --- DAILY MEALS ---
@@ -307,13 +324,115 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flash = "Carried forward closing balances from {$prevMonth} into each member's Previous Balance!";
     }
 
-    // --- CHAT & NOTIFICATIONS ---
+    // --- CHAT, STRUCTURED MEAL REQUESTS & AUTO-MERGE APPROVAL ---
     if ($action === 'send_chat' && $subInfo['active']) {
-        $msg     = trim($_POST['message']);
-        $reqType = $_POST['request_type'] === 'meal_request' ? 'meal_request' : 'chat';
-        if ($msg !== '') {
-            $ins = $pdo->prepare("INSERT INTO chat_messages (mess_id, sender_id, message, request_type) VALUES (?, ?, ?, ?)");
-            $ins->execute([$messId, $currentUid, $msg, $reqType]);
+        $msg     = trim($_POST['message'] ?? '');
+        $reqType = $_POST['request_type'] ?? 'chat';
+        if (!in_array($reqType, ['chat', 'meal_request', 'amount_request'], true)) {
+            $reqType = 'chat';
+        }
+
+        if ($reqType === 'meal_request') {
+            $targetDate = $_POST['target_date'] ?: $today;
+            $reqB = max(0, (float)($_POST['req_breakfast'] ?? 0));
+            $reqL = max(0, (float)($_POST['req_lunch'] ?? 0));
+            $reqD = max(0, (float)($_POST['req_dinner'] ?? 0));
+            $summaryText = $msg !== ''
+                ? $msg
+                : sprintf("Meal request for %s: B=%.1f, L=%.1f, D=%.1f", $targetDate, $reqB, $reqL, $reqD);
+
+            $ins = $pdo->prepare("
+                INSERT INTO chat_messages (mess_id, sender_id, target_user_id, message, request_type, target_date, req_breakfast, req_lunch, req_dinner, is_processed)
+                VALUES (?, ?, ?, ?, 'meal_request', ?, ?, ?, ?, 0)
+            ");
+            $ins->execute([$messId, $currentUid, $currentUid, $summaryText, $targetDate, $reqB, $reqL, $reqD]);
+            $flash = "Meal request sent for Manager approval & auto-merge.";
+        } elseif ($reqType === 'amount_request') {
+            $reqCat    = ($_POST['req_category'] ?? 'grocery') === 'misc' ? 'misc' : 'grocery';
+            $reqAmount = (float)($_POST['req_amount'] ?? 0);
+            $reqDesc   = trim($_POST['req_description'] ?? '');
+            if ($reqDesc === '') {
+                $reqDesc = $msg !== '' ? $msg : 'Chat bazar / amount request';
+            }
+            $summaryText = $msg !== ''
+                ? $msg
+                : sprintf("%s request: %s (%s)", strtoupper($reqCat), $reqDesc, fmtMoney($cur, $reqAmount));
+
+            if ($reqAmount > 0) {
+                $ins = $pdo->prepare("
+                    INSERT INTO chat_messages (mess_id, sender_id, target_user_id, message, request_type, req_category, req_amount, req_description, is_processed)
+                    VALUES (?, ?, ?, ?, 'amount_request', ?, ?, ?, 0)
+                ");
+                $ins->execute([$messId, $currentUid, $currentUid, $summaryText, $reqCat, $reqAmount, $reqDesc]);
+                $flash = "Amount request (" . fmtMoney($cur, $reqAmount) . ") sent for Manager approval & auto-merge.";
+            } else {
+                $flashError = "Please enter a valid amount greater than 0 for an amount merge request.";
+            }
+        } elseif ($msg !== '') {
+            // General Chat: no approval badge or approval button required
+            $ins = $pdo->prepare("INSERT INTO chat_messages (mess_id, sender_id, message, request_type, is_processed) VALUES (?, ?, ?, 'chat', 1)");
+            $ins->execute([$messId, $currentUid, $msg]);
+        }
+    }
+
+    if ($action === 'approve_meal_request' && $role === 'manager' && $subInfo['active']) {
+        $chatId = (int)$_POST['chat_id'];
+        $reqStmt = $pdo->prepare("SELECT * FROM chat_messages WHERE id = ? AND mess_id = ? AND request_type = 'meal_request' AND is_processed = 0");
+        $reqStmt->execute([$chatId, $messId]);
+        $req = $reqStmt->fetch();
+
+        if ($req) {
+            $targetUid  = (int)($req['target_user_id'] ?: $req['sender_id']);
+            $targetDate = $req['target_date'] ?: $today;
+            $b = (float)($req['req_breakfast'] ?? 0);
+            $l = (float)($req['req_lunch'] ?? 0);
+            $d = (float)($req['req_dinner'] ?? 0);
+
+            $pdo->beginTransaction();
+            $upsert = $pdo->prepare("
+                INSERT INTO meals (mess_id, user_id, meal_date, breakfast, lunch, dinner)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    breakfast = VALUES(breakfast),
+                    lunch     = VALUES(lunch),
+                    dinner    = VALUES(dinner)
+            ");
+            $upsert->execute([$messId, $targetUid, $targetDate, $b, $l, $d]);
+
+            $mark = $pdo->prepare("UPDATE chat_messages SET is_processed = 1 WHERE id = ? AND mess_id = ?");
+            $mark->execute([$chatId, $messId]);
+            $pdo->commit();
+
+            $flash = "Meal request approved & auto-merged into {$targetDate} meal records (Total: " . number_format($b + $l + $d, 1) . ").";
+        }
+    }
+
+    if ($action === 'approve_amount_request' && $role === 'manager' && $subInfo['active']) {
+        $chatId = (int)$_POST['chat_id'];
+        $reqStmt = $pdo->prepare("SELECT * FROM chat_messages WHERE id = ? AND mess_id = ? AND request_type = 'amount_request' AND is_processed = 0");
+        $reqStmt->execute([$chatId, $messId]);
+        $req = $reqStmt->fetch();
+
+        if ($req) {
+            $paidByUid = (int)($req['target_user_id'] ?: $req['sender_id']);
+            $cat       = ($req['req_category'] ?? 'grocery') === 'misc' ? 'misc' : 'grocery';
+            $amount    = (float)($req['req_amount'] ?? 0);
+            $desc      = trim((string)($req['req_description'] ?? '')) ?: trim((string)$req['message']);
+
+            if ($amount > 0) {
+                $pdo->beginTransaction();
+                $insExp = $pdo->prepare("
+                    INSERT INTO expenses (mess_id, paid_by_user_id, category, description, amount, expense_date, status, billing_month)
+                    VALUES (?, ?, ?, ?, ?, ?, 'approved', ?)
+                ");
+                $insExp->execute([$messId, $paidByUid, $cat, $desc, $amount, $today, $billingMonth]);
+
+                $mark = $pdo->prepare("UPDATE chat_messages SET is_processed = 1 WHERE id = ? AND mess_id = ?");
+                $mark->execute([$chatId, $messId]);
+                $pdo->commit();
+
+                $flash = "Amount request (" . fmtMoney($cur, $amount) . ") approved & merged into " . strtoupper($cat) . " expenses.";
+            }
         }
     }
 
@@ -413,8 +532,15 @@ $chatStmt = $pdo->prepare("
 $chatStmt->execute([$messId]);
 $chats = array_reverse($chatStmt->fetchAll());
 
-$unreadMealRequests = array_filter($chats, fn($c) => $c['request_type'] === 'meal_request' && (int)$c['is_processed'] === 0);
-$totalNotifications = count($pendingExpenses) + count($unreadMealRequests);
+$unreadActionRequests = array_filter(
+    $chats,
+    fn($c) => in_array($c['request_type'], ['meal_request', 'amount_request'], true) && (int)$c['is_processed'] === 0
+);
+$totalNotifications = count($pendingExpenses) + count($unreadActionRequests);
+
+// Sub-labels for Top KPI Cards
+$cashFormulaSub = "Funds - (Grocery + Misc)";
+$miscSplitSub   = fmtMoney($cur, $currSummary['misc_per_member']) . " / member (" . count($members) . ")";
 
 // Column Totals
 $sumPrevBal  = 0.0;
@@ -436,7 +562,7 @@ $sumNetBal   = 0.0;
     <style>
         body { background-color: #f8fafc; color: #1e293b; font-size: 0.97rem; }
         .card-clean { background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
-        .kpi-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: #00204e; }
+        .kpi-label { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #64748b; }
         .kpi-value { font-size: 1.55rem; font-weight: 700; margin-top: 0.25rem; }
         .nav-tabs-clean .nav-link { color: #475569; font-weight: 600; font-size: 0.95rem; border: none; border-bottom: 3px solid transparent; padding: 0.85rem 1.2rem; }
         .nav-tabs-clean .nav-link.active { color: #059669; border-bottom-color: #059669; background: transparent; }
@@ -532,6 +658,13 @@ $sumNetBal   = 0.0;
         </div>
     <?php endif; ?>
 
+    <?php if ($flashError !== ''): ?>
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 py-2.5 fw-semibold" role="alert">
+            <i class="bi bi-shield-exclamation me-1"></i> <?= e($flashError) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
     <!-- INDIVIDUAL MEMBER SUMMARY CARD (SHOWN WHEN LOGGED IN AS MEMBER) -->
     <?php if ($role === 'member' && isset($currSummary['members'][$currentUid])):
         $my = $currSummary['members'][$currentUid];
@@ -545,7 +678,7 @@ $sumNetBal   = 0.0;
             <div class="text-end">
                 <div class="small text-muted fw-semibold text-uppercase">My Net Balance</div>
                 <span class="net-pill fs-5 <?= $my['net'] >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' ?>">
-                    <?= ($my['net'] >= 0 ? '+' : '') . e($cur) . number_format($my['net'], 2) ?>
+                    <?= ($my['net'] >= 0 ? '+' : '') . e(fmtMoney($cur, $my['net'])) ?>
                 </span>
             </div>
         </div>
@@ -553,19 +686,19 @@ $sumNetBal   = 0.0;
             <div class="col-6 col-md-2">
                 <div class="p-2.5 rounded-3 bg-light">
                     <div class="small text-muted">Prev. Balance</div>
-                    <div class="fw-bold font-monospace"><?= ($my['prev'] >= 0 ? '+' : '') . e($cur) . number_format($my['prev'], 2) ?></div>
+                    <div class="fw-bold font-monospace"><?= ($my['prev'] >= 0 ? '+' : '') . e(fmtMoney($cur, $my['prev'])) ?></div>
                 </div>
             </div>
             <div class="col-6 col-md-2">
                 <div class="p-2.5 rounded-3 bg-light">
                     <div class="small text-muted">My Deposits</div>
-                    <div class="fw-bold font-monospace text-success"><?= e($cur) . number_format($my['deposit'], 2) ?></div>
+                    <div class="fw-bold font-monospace text-success"><?= e(fmtMoney($cur, $my['deposit'])) ?></div>
                 </div>
             </div>
             <div class="col-6 col-md-2">
                 <div class="p-2.5 rounded-3 bg-light">
                     <div class="small text-muted">Own Grocery</div>
-                    <div class="fw-bold font-monospace"><?= e($cur) . number_format($my['grocery'], 2) ?></div>
+                    <div class="fw-bold font-monospace"><?= e(fmtMoney($cur, $my['grocery'])) ?></div>
                 </div>
             </div>
             <div class="col-6 col-md-2">
@@ -577,59 +710,56 @@ $sumNetBal   = 0.0;
             <div class="col-6 col-md-2">
                 <div class="p-2.5 rounded-3 bg-light">
                     <div class="small text-muted">My Meal Cost</div>
-                    <div class="fw-bold font-monospace"><?= e($cur) . number_format($my['meal_cost'], 2) ?></div>
+                    <div class="fw-bold font-monospace"><?= e(fmtMoney($cur, $my['meal_cost'])) ?></div>
                 </div>
             </div>
             <div class="col-6 col-md-2">
                 <div class="p-2.5 rounded-3 bg-light">
                     <div class="small text-muted">My Misc Share</div>
-                    <div class="fw-bold font-monospace"><?= e($cur) . number_format($my['misc'], 2) ?></div>
+                    <div class="fw-bold font-monospace"><?= e(fmtMoney($cur, $my['misc'])) ?></div>
                 </div>
             </div>
         </div>
     </div>
     <?php endif; ?>
 
-    <?php if (!empty($flashError)): ?>
-        <div class="alert alert-danger alert-dismissible fade show rounded-3 py-2.5 fw-semibold" role="alert">
-            <i class="bi bi-shield-exclamation me-1"></i> <?= e($flashError) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <!-- 5 KPI Summary Cards -->
+    <!-- Top 4 Colored-Border KPI Cards + Sub-Labels + Live Cost Per Meal -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-lg">
-            <div class="card-clean p-4 h-100 border-dark">
-                <div class="kpi-label">Total Funds Collected</div>
-                <div class="kpi-value text-dark"><?= e($cur) ?><?= number_format($currSummary['total_deposits'], 2) ?></div>
+            <div class="card-clean p-4 h-100" style="border-top: 4px solid #059669;">
+                <div class="kpi-label text-success">Total Funds Collected</div>
+                <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_deposits'])) ?></div>
+                <div class="small text-muted mt-1">Member deposits this month</div>
             </div>
         </div>
         <div class="col-6 col-lg">
-            <div class="card-clean p-4 h-100 border-warning">
-                <div class="kpi-label">Grocery Expenditure</div>
-                <div class="kpi-value text-warning"><?= e($cur) ?><?= number_format($currSummary['total_grocery'], 2) ?></div>
+            <div class="card-clean p-4 h-100" style="border-top: 4px solid #d97706;">
+                <div class="kpi-label" style="color:#b45309;">Grocery Expenditure</div>
+                <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_grocery'])) ?></div>
+                <div class="small text-muted mt-1">Approved bazar &amp; food items</div>
             </div>
         </div>
         <div class="col-6 col-lg">
-            <div class="card-clean p-4 h-100 border-primary">
-                <div class="kpi-label">Misc & Fixed Bills</div>
-                <div class="kpi-value text-primary"><?= e($cur) ?><?= number_format($currSummary['total_misc'], 2) ?></div>
+            <div class="card-clean p-4 h-100" style="border-top: 4px solid #4f46e5;">
+                <div class="kpi-label text-primary">Misc &amp; Fixed Bills</div>
+                <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_misc'])) ?></div>
+                <div class="small text-muted mt-1"><?= e($miscSplitSub) ?></div>
             </div>
         </div>
         <div class="col-6 col-lg">
-            <div class="card-clean p-4 h-100 border-success">
-                <div class="kpi-label">Cash Held by Manager</div>
+            <div class="card-clean p-4 h-100" style="border-top: 4px solid <?= $currSummary['cash_held'] >= 0 ? '#0d9488' : '#dc2626' ?>;">
+                <div class="kpi-label" style="color:<?= $currSummary['cash_held'] >= 0 ? '#0f766e' : '#b91c1c' ?>;">Cash Held by Manager</div>
                 <div class="kpi-value <?= $currSummary['cash_held'] >= 0 ? 'text-success' : 'text-danger' ?>">
-                    <?= e($cur) ?><?= number_format($currSummary['cash_held'], 2) ?>
+                    <?= e(fmtMoney($cur, $currSummary['cash_held'])) ?>
                 </div>
+                <div class="small text-muted mt-1"><?= e($cashFormulaSub) ?></div>
             </div>
         </div>
         <div class="col-12 col-lg">
-            <div class="card border-0 rounded-4 p-4 h-100 text-white" style="background:#064e3b;">
+            <div class="card border-0 rounded-4 p-4 h-100 text-white" style="background:#064e3b; border-left: 4px solid #34d399 !important;">
                 <div class="kpi-label text-white-50">Live Cost Per Meal</div>
-                <div class="kpi-value"><?= e($cur) ?><?= number_format($currSummary['cost_per_meal'], 2) ?></div>
-                <div class="small text-white-50">Total Meals: <?= number_format($currSummary['total_meals'], 1) ?></div>
+                <div class="kpi-value"><?= e(fmtMoney($cur, $currSummary['cost_per_meal'])) ?></div>
+                <div class="small text-white-50 mt-1">Total Meals: <?= number_format($currSummary['total_meals'], 1) ?></div>
             </div>
         </div>
     </div>
@@ -676,7 +806,7 @@ $sumNetBal   = 0.0;
                         <h5 class="fw-bold mb-0">Member Accounts & Meal Ledger (<?= e($billingMonth) ?>)</h5>
                         <small class="text-muted">Alternating shaded rows • Net Balance highlighted with color badges.</small>
                     </div>
-                    <span class="badge bg-light text-secondary border fs-6 py-2 px-3">Misc Split: <?= e($cur) ?><?= number_format($currSummary['misc_per_member'], 2) ?> / member</span>
+                    <span class="badge bg-light text-secondary border fs-6 py-2 px-3">Misc Split: <?= e(fmtMoney($cur, $currSummary['misc_per_member'])) ?> / member</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-ledger mb-0">
@@ -698,6 +828,12 @@ $sumNetBal   = 0.0;
                                 $uid   = (int)$m['id'];
                                 $isYou = ($uid === $currentUid);
                                 $d     = $currSummary['members'][$uid];
+
+                                $hasMonthActivity = (
+                                    ($d['deposit'] ?? 0) != 0 ||
+                                    ($d['meals'] ?? 0) > 0 ||
+                                    ($d['grocery'] ?? 0) > 0
+                                );
 
                                 $sumPrevBal  += $d['prev'];
                                 $sumDeposit  += $d['deposit'];
@@ -727,7 +863,7 @@ $sumNetBal   = 0.0;
                                 <td class="text-end font-monospace text-muted"><?= number_format($d['misc'], 2) ?></td>
                                 <td class="text-end">
                                     <span class="net-pill <?= $d['net'] >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' ?>">
-                                        <?= ($d['net'] >= 0 ? '+' : '') . e($cur) . number_format($d['net'], 2) ?>
+                                        <?= ($d['net'] >= 0 ? '+' : '') . e(fmtMoney($cur, $d['net'])) ?>
                                     </span>
                                 </td>
                                 <?php if ($role === 'manager'): ?>
@@ -736,13 +872,6 @@ $sumNetBal   = 0.0;
                                         onclick="openEditMember(<?= $uid ?>, '<?= e($m['full_name']) ?>', <?= (float)$m['previous_balance'] ?>)">
                                         <i class="bi bi-pencil"></i>
                                     </button>
-                                    <?php
-                                    $hasMonthActivity = (
-                                        ($currSummary['members'][$uid]['deposit'] ?? 0) != 0 ||
-                                        ($currSummary['members'][$uid]['meals'] ?? 0) > 0 ||
-                                        ($currSummary['members'][$uid]['grocery'] ?? 0) > 0
-                                    );
-                                    ?>
                                     <?php if ($m['role'] !== 'manager'): ?>
                                         <?php if ($hasMonthActivity): ?>
                                             <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2 disabled"
@@ -773,7 +902,7 @@ $sumNetBal   = 0.0;
                                 <td class="text-end font-monospace"><?= number_format($sumMisc, 2) ?></td>
                                 <td class="text-end">
                                     <span class="net-pill <?= $sumNetBal >= 0 ? 'bg-success text-white' : 'bg-danger text-white' ?>">
-                                        <?= ($sumNetBal >= 0 ? '+' : '') . e($cur) . number_format($sumNetBal, 2) ?>
+                                        <?= ($sumNetBal >= 0 ? '+' : '') . e(fmtMoney($cur, $sumNetBal)) ?>
                                     </span>
                                 </td>
                                 <?php if ($role === 'manager'): ?><td></td><?php endif; ?>
@@ -813,7 +942,7 @@ $sumNetBal   = 0.0;
                                 </td>
                                 <td><?= e($dp['note']) ?></td>
                                 <td class="text-end font-monospace fw-bold <?= $dp['amount'] < 0 ? 'text-danger' : 'text-success' ?>">
-                                    <?= ($dp['amount'] >= 0 ? '+' : '') . e($cur) . number_format($dp['amount'], 2) ?>
+                                    <?= ($dp['amount'] >= 0 ? '+' : '') . e(fmtMoney($cur, (float)$dp['amount'])) ?>
                                 </td>
                                 <?php if ($role === 'manager'): ?>
                                 <td class="text-end">
@@ -837,7 +966,6 @@ $sumNetBal   = 0.0;
 
         <!-- TAB 2: DAILY MEALS + FULL MONTH MEAL CHART -->
         <div class="tab-pane fade <?= $activeTab === 'meals' ? 'show active' : '' ?>" id="tabMeals">
-            <!-- Daily Entry Form -->
             <div class="card-clean p-4 mb-4">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                     <div>
@@ -890,7 +1018,7 @@ $sumNetBal   = 0.0;
                 </form>
             </div>
 
-            <!-- FULL MONTH MEAL CHART MATRIX (DAY 1 TO 30/31) -->
+            <!-- FULL MONTH MEAL CHART MATRIX -->
             <div class="card-clean p-4">
                 <div class="mb-3">
                     <h5 class="fw-bold mb-0">Full Month Meal Chart (<?= e($billingMonth) ?>)</h5>
@@ -943,10 +1071,9 @@ $sumNetBal   = 0.0;
             </div>
         </div>
 
-        <!-- TAB 3: GROCERY & MISC BILLS (WITH EDIT & DELETE) -->
+        <!-- TAB 3: GROCERY & MISC BILLS -->
         <div class="tab-pane fade <?= $activeTab === 'expenses' ? 'show active' : '' ?>" id="tabExpenses">
             <div class="row g-4">
-                <!-- Left Column: Grocery -->
                 <div class="col-lg-6">
                     <div class="card-clean p-4 mb-4">
                         <h6 class="fw-bold mb-1"><i class="bi bi-bag-plus-fill text-warning me-1"></i> Log Grocery / Bazar Purchase</h6>
@@ -964,11 +1091,11 @@ $sumNetBal   = 0.0;
                                 </select>
                             </div>
                             <div class="col-6">
-                                <input type="number" step="0.01" name="amount" required placeholder="Amount (<?= e($cur) ?>)" class="form-control">
+                                <input type="number" step="0.01" name="amount" required placeholder="Amount" class="form-control">
                             </div>
                             <?php else: ?>
                             <div class="col-12">
-                                <input type="number" step="0.01" name="amount" required placeholder="Amount Spent (<?= e($cur) ?>)" class="form-control">
+                                <input type="number" step="0.01" name="amount" required placeholder="Amount Spent" class="form-control">
                             </div>
                             <?php endif; ?>
                             <div class="col-12">
@@ -976,7 +1103,7 @@ $sumNetBal   = 0.0;
                             </div>
                             <div class="col-12">
                                 <button type="submit" class="btn btn-warning fw-semibold w-100">
-                                    <?= $role === 'manager' ? 'Add & Approve Grocery Purchase' : 'Submit Grocery Expense for Approval' ?>
+                                    <?= $role === 'manager' ? 'Add & Approve Grocery Purchase' : 'Submit Grocery Expense for Approval & Auto-Merge' ?>
                                 </button>
                             </div>
                         </form>
@@ -985,7 +1112,7 @@ $sumNetBal   = 0.0;
                     <div class="card-clean p-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="fw-bold mb-0">Grocery Expenditure Log</h6>
-                            <span class="badge bg-warning-subtle text-dark fs-6">Total: <?= e($cur) ?><?= number_format($currSummary['total_grocery'], 2) ?></span>
+                            <span class="badge bg-warning-subtle text-dark fs-6">Total: <?= e(fmtMoney($cur, $currSummary['total_grocery'])) ?></span>
                         </div>
                         <div class="table-responsive" style="max-height:360px;">
                             <table class="table align-middle mb-0">
@@ -1008,11 +1135,11 @@ $sumNetBal   = 0.0;
                                                 <?= e($g['status']) ?>
                                             </span>
                                         </td>
-                                        <td class="text-end font-monospace fw-bold"><?= e($cur) ?><?= number_format($g['amount'], 2) ?></td>
+                                        <td class="text-end font-monospace fw-bold"><?= e(fmtMoney($cur, (float)$g['amount'])) ?></td>
                                         <?php if ($role === 'manager'): ?>
                                         <td class="text-end text-nowrap">
                                             <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1.5"
-                                                onclick="openEditExpense(<?= $g['id'] ?>, '<?= e($g['description']) ?>', <?= (float)$g['amount'] ?>, <?= (int)$g['paid_by_user_id'] ?>, 'expenses')">
+                                                onclick="openEditExpense(<?= $g['id'] ?>, '<?= e($g['description']) ?>', <?= (float)$g['amount'] ?>, <?= (int)$g['paid_by_user_id'] ?>)">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             <form method="POST" class="d-inline" onsubmit="return confirm('Delete this grocery entry?');">
@@ -1031,11 +1158,10 @@ $sumNetBal   = 0.0;
                     </div>
                 </div>
 
-                <!-- Right Column: Misc & Fixed Bills -->
                 <div class="col-lg-6">
                     <div class="card-clean p-4">
                         <h6 class="fw-bold mb-1"><i class="bi bi-receipt text-primary me-1"></i> Miscellaneous & Fixed Bills</h6>
-                        <p class="small text-muted mb-3">Cook salary, Wi-Fi, gas, electricity — split equally across all <?= count($members) ?> members (<?= e($cur) ?><?= number_format($currSummary['misc_per_member'], 2) ?> each).</p>
+                        <p class="small text-muted mb-3">Cook salary, Wi-Fi, gas, electricity — split equally across all <?= count($members) ?> members (<?= e(fmtMoney($cur, $currSummary['misc_per_member'])) ?> each).</p>
                         <form method="POST" class="row g-2 mb-4">
                             <input type="hidden" name="action" value="add_expense">
                             <input type="hidden" name="current_tab" value="expenses">
@@ -1044,7 +1170,7 @@ $sumNetBal   = 0.0;
                                 <input type="text" name="description" required placeholder="Bill name (e.g., Cook Salary, Wi-Fi)" class="form-control">
                             </div>
                             <div class="col-5">
-                                <input type="number" step="0.01" name="amount" required placeholder="Amount (<?= e($cur) ?>)" class="form-control">
+                                <input type="number" step="0.01" name="amount" required placeholder="Amount" class="form-control">
                             </div>
                             <div class="col-12">
                                 <button type="submit" class="btn btn-primary fw-semibold w-100">Add Misc / Fixed Bill</button>
@@ -1053,7 +1179,7 @@ $sumNetBal   = 0.0;
 
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="small fw-bold text-uppercase text-muted">Misc Bills Log</span>
-                            <span class="badge bg-primary-subtle text-primary fs-6">Total: <?= e($cur) ?><?= number_format($currSummary['total_misc'], 2) ?></span>
+                            <span class="badge bg-primary-subtle text-primary fs-6">Total: <?= e(fmtMoney($cur, $currSummary['total_misc'])) ?></span>
                         </div>
                         <div class="table-responsive" style="max-height:360px;">
                             <table class="table align-middle mb-0">
@@ -1070,11 +1196,11 @@ $sumNetBal   = 0.0;
                                     <tr>
                                         <td><?= e($ms['description']) ?></td>
                                         <td><?= e($ms['full_name']) ?></td>
-                                        <td class="text-end font-monospace fw-bold"><?= e($cur) ?><?= number_format($ms['amount'], 2) ?></td>
+                                        <td class="text-end font-monospace fw-bold"><?= e(fmtMoney($cur, (float)$ms['amount'])) ?></td>
                                         <?php if ($role === 'manager'): ?>
                                         <td class="text-end text-nowrap">
                                             <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1.5"
-                                                onclick="openEditExpense(<?= $ms['id'] ?>, '<?= e($ms['description']) ?>', <?= (float)$ms['amount'] ?>, <?= (int)$ms['paid_by_user_id'] ?>, 'expenses')">
+                                                onclick="openEditExpense(<?= $ms['id'] ?>, '<?= e($ms['description']) ?>', <?= (float)$ms['amount'] ?>, <?= (int)$ms['paid_by_user_id'] ?>)">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             <form method="POST" class="d-inline" onsubmit="return confirm('Delete this misc bill?');">
@@ -1095,7 +1221,7 @@ $sumNetBal   = 0.0;
             </div>
         </div>
 
-        <!-- TAB 4: SHOPPING ROSTER (WITH EDIT & DELETE) -->
+        <!-- TAB 4: SHOPPING ROSTER -->
         <div class="tab-pane fade <?= $activeTab === 'roster' ? 'show active' : '' ?>" id="tabRoster">
             <div class="card-clean p-4">
                 <div class="mb-3">
@@ -1183,9 +1309,9 @@ $sumNetBal   = 0.0;
                     <div>
                         <h5 class="fw-bold mb-1">Previous Month Calculation (<?= e($prevMonth) ?>)</h5>
                         <p class="small text-muted mb-0">
-                            Meal Rate: <strong><?= e($cur) ?><?= number_format($prevSummary['cost_per_meal'], 2) ?></strong> •
+                            Meal Rate: <strong><?= e(fmtMoney($cur, $prevSummary['cost_per_meal'])) ?></strong> •
                             Total Meals: <strong><?= number_format($prevSummary['total_meals'], 1) ?></strong> •
-                            Misc Share: <strong><?= e($cur) ?><?= number_format($prevSummary['misc_per_member'], 2) ?></strong>
+                            Misc Share: <strong><?= e(fmtMoney($cur, $prevSummary['misc_per_member'])) ?></strong>
                         </p>
                     </div>
                     <?php if ($role === 'manager'): ?>
@@ -1227,7 +1353,7 @@ $sumNetBal   = 0.0;
                                 <td class="text-end font-monospace text-muted"><?= number_format($pd['misc'], 2) ?></td>
                                 <td class="text-end pe-4">
                                     <span class="net-pill <?= $pd['net'] >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' ?>">
-                                        <?= ($pd['net'] >= 0 ? '+' : '') . e($cur) . number_format($pd['net'], 2) ?>
+                                        <?= ($pd['net'] >= 0 ? '+' : '') . e(fmtMoney($cur, $pd['net'])) ?>
                                     </span>
                                 </td>
                             </tr>
@@ -1241,52 +1367,81 @@ $sumNetBal   = 0.0;
     </div>
 </div>
 
-<!-- OFFCANVAS DRAWER: CHAT & MANAGER APPROVALS -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="drawerNotify" style="width: 420px;">
+<!-- OFFCANVAS DRAWER: CHAT & AUTO-MERGE APPROVALS -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="drawerNotify" style="width: 440px;">
     <div class="offcanvas-header border-bottom">
-        <h6 class="offcanvas-title fw-bold"><i class="bi bi-chat-dots-fill text-success me-1"></i> Mess Chat & Approvals</h6>
+        <h6 class="offcanvas-title fw-bold"><i class="bi bi-chat-dots-fill text-success me-1"></i> Mess Chat &amp; Auto-Merge Approvals</h6>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
     </div>
     <div class="offcanvas-body d-flex flex-column justify-content-between">
         <div class="overflow-y-auto pe-1">
             <?php if ($role === 'manager' && count($pendingExpenses) > 0): ?>
                 <div class="mb-4">
-                    <div class="small fw-bold text-uppercase text-danger mb-2">Pending Expense Approvals (<?= count($pendingExpenses) ?>)</div>
+                    <div class="small fw-bold text-uppercase text-danger mb-2">Pending Expense Requests (<?= count($pendingExpenses) ?>)</div>
                     <?php foreach ($pendingExpenses as $pe): ?>
                     <div class="p-3 mb-2 rounded-3 border border-warning bg-warning-subtle small">
                         <div class="d-flex justify-content-between fw-bold">
                             <span><?= e($pe['full_name']) ?> (<?= strtoupper($pe['category']) ?>)</span>
-                            <span><?= e($cur) ?><?= number_format($pe['amount'], 2) ?></span>
+                            <span><?= e(fmtMoney($cur, (float)$pe['amount'])) ?></span>
                         </div>
                         <div class="text-dark my-1"><?= e($pe['description']) ?></div>
                         <form method="POST" class="d-flex gap-2 mt-2">
                             <input type="hidden" name="action" value="decide_expense">
                             <input type="hidden" name="expense_id" value="<?= $pe['id'] ?>">
-                            <button name="decision" value="approved" class="btn btn-success btn-sm py-0 px-2">Approve</button>
-                            <button name="decision" value="rejected" class="btn btn-outline-danger btn-sm py-0 px-2">Reject</button>
+                            <button name="decision" value="approved" class="btn btn-success btn-sm py-0.5 px-2 fw-semibold">Approve &amp; Merge</button>
+                            <button name="decision" value="rejected" class="btn btn-outline-danger btn-sm py-0.5 px-2">Reject</button>
                         </form>
                     </div>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
 
-            <div class="small fw-bold text-uppercase text-muted mb-2">Mess Chat & Meal Notices</div>
-            <?php foreach ($chats as $c): $isMealReq = $c['request_type'] === 'meal_request'; ?>
-                <div class="p-3 mb-2 rounded-3 border <?= ($isMealReq && !$c['is_processed']) ? 'border-primary bg-primary-subtle' : 'bg-light' ?> small">
+            <div class="small fw-bold text-uppercase text-muted mb-2">Mess Chat &amp; Meal Requests</div>
+
+            <?php foreach ($chats as $c):
+                $isMealReq   = ($c['request_type'] ?? '') === 'meal_request';
+                $isAmountReq = ($c['request_type'] ?? '') === 'amount_request';
+                $isActionReq = $isMealReq || $isAmountReq;
+                $unprocessed = $isActionReq && (int)($c['is_processed'] ?? 0) === 0;
+            ?>
+                <div class="p-3 mb-2 rounded-3 border <?= $unprocessed ? 'border-primary bg-primary-subtle' : 'bg-light' ?> small">
                     <div class="d-flex justify-content-between align-items-center">
                         <strong><?= e($c['full_name']) ?> <span class="text-muted fw-normal">(<?= e($c['member_code']) ?>)</span></strong>
                         <?php if ($isMealReq): ?>
-                            <span class="badge <?= $c['is_processed'] ? 'bg-secondary' : 'bg-primary' ?>">
-                                <?= $c['is_processed'] ? 'Updated' : 'Meal Notice' ?>
+                            <span class="badge <?= (int)$c['is_processed'] ? 'bg-success' : 'bg-primary' ?>">
+                                <?= (int)$c['is_processed'] ? 'Merged' : 'Meal Request' ?>
                             </span>
+                        <?php elseif ($isAmountReq): ?>
+                            <span class="badge <?= (int)$c['is_processed'] ? 'bg-success' : 'bg-warning text-dark' ?>">
+                                <?= (int)$c['is_processed'] ? 'Merged' : 'Amount Request' ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="badge bg-secondary-subtle text-secondary">Chat</span>
                         <?php endif; ?>
                     </div>
+
                     <p class="mb-1 mt-1"><?= e($c['message']) ?></p>
-                    <?php if ($role === 'manager' && $isMealReq && !$c['is_processed']): ?>
-                        <form method="POST" class="mt-1">
-                            <input type="hidden" name="action" value="mark_chat_done">
-                            <input type="hidden" name="chat_id" value="<?= $c['id'] ?>">
-                            <button type="submit" class="btn btn-dark btn-sm py-0 px-2" style="font-size:0.75rem;">Mark Meal Updated</button>
+
+                    <?php if ($isMealReq && !empty($c['target_date'])): ?>
+                        <div class="small text-primary fw-semibold">
+                            Date: <?= e($c['target_date']) ?> •
+                            B: <?= number_format((float)($c['req_breakfast'] ?? 0), 1) ?> /
+                            L: <?= number_format((float)($c['req_lunch'] ?? 0), 1) ?> /
+                            D: <?= number_format((float)($c['req_dinner'] ?? 0), 1) ?>
+                        </div>
+                    <?php elseif ($isAmountReq && isset($c['req_amount'])): ?>
+                        <div class="small fw-semibold text-dark">
+                            Type: <span class="text-uppercase"><?= e($c['req_category'] ?? 'grocery') ?></span> •
+                            Amount: <span class="font-monospace text-success"><?= e(fmtMoney($cur, (float)$c['req_amount'])) ?></span>
+                            <?php if (!empty($c['req_description'])): ?>• <?= e($c['req_description']) ?><?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($role === 'manager' && $unprocessed): ?>
+                        <form method="POST" class="d-flex gap-2 mt-2">
+                            <input type="hidden" name="action" value="<?= $isMealReq ? 'approve_meal_request' : 'approve_amount_request' ?>">
+                            <input type="hidden" name="chat_id" value="<?= (int)$c['id'] ?>">
+                            <button type="submit" class="btn btn-success btn-sm py-0.5 px-2 fw-semibold">Approve &amp; Merge</button>
                         </form>
                     <?php endif; ?>
                 </div>
@@ -1295,15 +1450,62 @@ $sumNetBal   = 0.0;
 
         <form method="POST" class="pt-3 border-top mt-3">
             <input type="hidden" name="action" value="send_chat">
-            <div class="input-group mb-2">
-                <select name="request_type" class="form-select" style="max-width: 135px;">
-                    <option value="meal_request">Meal Notice</option>
+            <div class="input-group input-group-sm mb-2">
+                <select name="request_type" id="chatReqType" onchange="toggleChatReqFields()" class="form-select" style="max-width: 145px;">
+                    <option value="meal_request">Meal Request</option>
+                    <option value="amount_request">Amount Merge</option>
                     <option value="chat">General Chat</option>
                 </select>
-                <input type="text" name="message" required class="form-control" placeholder="e.g., Off for dinner tonight...">
+                <input type="text" name="message" class="form-control" placeholder="Message or note...">
                 <button type="submit" class="btn btn-success fw-semibold">Send</button>
             </div>
+
+            <!-- Meal Request Fields -->
+            <div id="mealReqFields" class="row g-1 small bg-light p-2 rounded-3 border mb-1">
+                <div class="col-5">
+                    <label class="form-label mb-0 text-muted" style="font-size:0.7rem;">Date</label>
+                    <input type="date" name="target_date" value="<?= e($today) ?>" class="form-control form-control-sm">
+                </div>
+                <div class="col-2">
+                    <label class="form-label mb-0 text-muted" style="font-size:0.7rem;">B (0.5)</label>
+                    <input type="number" step="0.5" min="0" max="5" name="req_breakfast" value="0.5" class="form-control form-control-sm px-1 text-center">
+                </div>
+                <div class="col-2">
+                    <label class="form-label mb-0 text-muted" style="font-size:0.7rem;">L (1.0)</label>
+                    <input type="number" step="0.5" min="0" max="5" name="req_lunch" value="1.0" class="form-control form-control-sm px-1 text-center">
+                </div>
+                <div class="col-3">
+                    <label class="form-label mb-0 text-muted" style="font-size:0.7rem;">D (1.0)</label>
+                    <input type="number" step="0.5" min="0" max="5" name="req_dinner" value="0.0" class="form-control form-control-sm px-1 text-center">
+                </div>
+            </div>
+
+            <!-- Amount / Grocery Merge Fields -->
+            <div id="amountReqFields" class="row g-1 small bg-light p-2 rounded-3 border d-none">
+                <div class="col-4">
+                    <label class="form-label mb-0 text-muted" style="font-size:0.7rem;">Category</label>
+                    <select name="req_category" class="form-select form-select-sm">
+                        <option value="grocery">Grocery</option>
+                        <option value="misc">Misc Bill</option>
+                    </select>
+                </div>
+                <div class="col-4">
+                    <label class="form-label mb-0 text-muted" style="font-size:0.7rem;">Amount</label>
+                    <input type="number" step="0.01" min="0.01" name="req_amount" placeholder="0.00" class="form-control form-control-sm">
+                </div>
+                <div class="col-4">
+                    <label class="form-label mb-0 text-muted" style="font-size:0.7rem;">Items / Reason</label>
+                    <input type="text" name="req_description" placeholder="e.g., Rice & Oil" class="form-control form-control-sm">
+                </div>
+            </div>
         </form>
+        <script>
+        function toggleChatReqFields() {
+            const mode = document.getElementById('chatReqType').value;
+            document.getElementById('mealReqFields').classList.toggle('d-none', mode !== 'meal_request');
+            document.getElementById('amountReqFields').classList.toggle('d-none', mode !== 'amount_request');
+        }
+        </script>
     </div>
 </div>
 
@@ -1355,7 +1557,7 @@ $sumNetBal   = 0.0;
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="mb-3"><label class="form-label small fw-semibold">Deposit Amount (<?= e($cur) ?>)</label><input type="number" step="0.01" name="amount" required class="form-control"></div>
+                <div class="mb-3"><label class="form-label small fw-semibold">Deposit Amount</label><input type="number" step="0.01" name="amount" required class="form-control"></div>
                 <div><label class="form-label small fw-semibold">Payment Note</label><input type="text" name="note" placeholder="e.g., Cash / bKash" class="form-control"></div>
             </div>
             <div class="modal-footer"><button type="submit" class="btn btn-success fw-semibold">Save Deposit</button></div>
@@ -1373,7 +1575,7 @@ $sumNetBal   = 0.0;
                 <input type="hidden" name="deposit_id" id="fixDepositId">
                 <p class="small text-muted mb-3">Fixing deposit for <strong id="fixMemberName"></strong>. Wrong amount recorded: <strong id="fixWrongDisplay"></strong></p>
                 <div class="mb-3">
-                    <label class="form-label small fw-semibold">What is the ACTUAL correct deposit amount? (<?= e($cur) ?>)</label>
+                    <label class="form-label small fw-semibold">What is the ACTUAL correct deposit amount?</label>
                     <input type="number" step="0.01" name="correct_amount" id="fixCorrectInput" required class="form-control form-control-lg fw-bold">
                 </div>
                 <div>
@@ -1404,7 +1606,7 @@ $sumNetBal   = 0.0;
                     </select>
                 </div>
                 <div class="mb-3"><label class="form-label small fw-semibold">Description</label><input type="text" name="description" id="editExpDesc" required class="form-control"></div>
-                <div><label class="form-label small fw-semibold">Amount (<?= e($cur) ?>)</label><input type="number" step="0.01" name="amount" id="editExpAmount" required class="form-control"></div>
+                <div><label class="form-label small fw-semibold">Amount</label><input type="number" step="0.01" name="amount" id="editExpAmount" required class="form-control"></div>
             </div>
             <div class="modal-footer"><button type="submit" class="btn btn-primary fw-semibold">Update Entry</button></div>
         </form>
@@ -1465,10 +1667,14 @@ $sumNetBal   = 0.0;
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+const CURRENCY_MAP = { 'BDT': '৳', '৳': '৳', 'INR': '₹', '₹': '₹', 'USD': '$', '$': '$' };
+const CUR_CODE = <?= json_encode($cur) ?>;
+const CUR_SYM = CURRENCY_MAP[CUR_CODE] || CUR_CODE;
+
 function openFixModal(depositId, memberName, wrongAmount) {
     document.getElementById('fixDepositId').value = depositId;
     document.getElementById('fixMemberName').textContent = memberName;
-    document.getElementById('fixWrongDisplay').textContent = '<?= e($cur) ?>' + wrongAmount.toFixed(2);
+    document.getElementById('fixWrongDisplay').textContent = CUR_SYM + Number(wrongAmount).toFixed(2);
     document.getElementById('fixCorrectInput').value = wrongAmount;
     new bootstrap.Modal(document.getElementById('modalFixDeposit')).show();
 }
@@ -1491,6 +1697,10 @@ function openEditRoster(rosterId, uid, dutyDate, note) {
     document.getElementById('editRosterDate').value = dutyDate;
     document.getElementById('editRosterNote').value = note;
     new bootstrap.Modal(document.getElementById('modalEditRoster')).show();
+}
+function toggleMealReqFields() {
+    const isMeal = document.getElementById('chatReqType').value === 'meal_request';
+    document.getElementById('mealReqFields').classList.toggle('d-none', !isMeal);
 }
 </script>
 </body>
