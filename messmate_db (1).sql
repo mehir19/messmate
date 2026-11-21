@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 21, 2026 at 11:08 AM
+-- Generation Time: Nov 21, 2026 at 06:58 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -79,17 +79,21 @@ CREATE TABLE `deposits` (
 --
 
 INSERT INTO `deposits` (`id`, `mess_id`, `user_id`, `amount`, `entry_type`, `note`, `recorded_by`, `billing_month`, `created_at`) VALUES
-(1, 1, 3, 5000.00, 'deposit', 'Cash', 1, '2026-11', '2026-11-21 03:01:31'),
-(2, 1, 3, 5000.00, 'deposit', 'Cash', 1, '2026-11', '2026-11-21 03:31:06'),
-(3, 1, 3, -5000.00, 'correction', 'Fixed Deposit #1 (Was ৳5000.00 → Now ৳0.00): Double entry', 1, '2026-11', '2026-11-21 04:48:25'),
 (4, 1, 1, 2000.00, 'deposit', 'bKash', 1, '2026-11', '2026-11-21 05:43:11'),
-(5, 1, 4, 6000.00, 'deposit', 'Monthly fund contribution', 1, '2026-11', '2026-11-21 09:44:35'),
 (6, 1, 1, 10000.00, 'deposit', 'Monthly fund contribution', 1, '2026-11', '2026-11-21 09:44:46'),
 (7, 1, 1, -3000.00, 'correction', 'Fixed Deposit #6 (Was ৳10,000.00 -> Now ৳7,000.00): Wrong input', 1, '2026-11', '2026-11-21 09:52:45'),
 (8, 1, 1, -9700.00, 'correction', 'Fixed Deposit #6 (Was ৳10,000.00 -> Now ৳300.00): Mistyped', 1, '2026-11', '2026-11-21 09:53:59'),
 (9, 1, 1, 4000.00, 'deposit', 'Monthly fund contribution', 1, '2026-11', '2026-11-21 09:56:44'),
 (10, 1, 1, -2000.00, 'correction', 'Fixed Deposit #9 (Was ৳4,000.00 -> Now ৳2,000.00): Wrong', 1, '2026-11', '2026-11-21 09:57:19'),
-(11, 1, 1, -3300.00, 'correction', 'Fixed Deposit #9 (Was ৳4,000.00 -> Now ৳700.00): Mis entry', 1, '2026-11', '2026-11-21 09:58:19');
+(11, 1, 1, -3300.00, 'correction', 'Fixed Deposit #9 (Was ৳4,000.00 -> Now ৳700.00): Mis entry', 1, '2026-11', '2026-11-21 09:58:19'),
+(12, 2, 9, 200.00, 'deposit', 'Monthly fund contribution', 9, '2026-11', '2026-11-21 14:19:55'),
+(13, 2, 10, 100.00, 'deposit', 'Monthly fund contribution', 9, '2026-11', '2026-11-21 14:20:03'),
+(14, 2, 11, 78.00, 'deposit', 'Monthly fund contribution', 9, '2026-11', '2026-11-21 14:20:12'),
+(15, 2, 12, 128.00, 'deposit', 'Monthly fund contribution', 9, '2026-11', '2026-11-21 14:20:26'),
+(16, 2, 12, -20.00, 'correction', 'Fixed Deposit #15 (Current $128.00 -> New $108.00, Diff $-20.00): Wrong Entry', 9, '2026-11', '2026-11-21 14:21:43'),
+(17, 2, 12, -38.00, 'correction', 'Fixed Deposit #15 (Current $108.00 -> New $70.00, Diff $-38.00): Mistype', 9, '2026-11', '2026-11-21 14:22:59'),
+(18, 1, 1, 5300.00, 'correction', 'Fixed Deposit #9 (Current ৳-1,300.00 -> New ৳4,000.00, Diff +৳5,300.00): Deposit again', 1, '2026-11', '2026-11-21 16:10:21'),
+(19, 1, 1, 7000.00, 'deposit', 'Monthly fund contribution', 1, '2026-11', '2026-11-21 16:10:36');
 
 -- --------------------------------------------------------
 
@@ -117,9 +121,7 @@ CREATE TABLE `expenses` (
 
 INSERT INTO `expenses` (`id`, `mess_id`, `paid_by_user_id`, `funding_source`, `category`, `description`, `amount`, `expense_date`, `status`, `billing_month`, `created_at`) VALUES
 (1, 1, 1, 'member_pocket', 'grocery', 'Chat bazar / amount request', 500.00, '2026-11-21', 'approved', '2026-11', '2026-11-21 07:45:21'),
-(2, 1, 3, 'member_pocket', 'grocery', 'For Fish cost', 900.00, '2026-11-21', 'approved', '2026-11', '2026-11-21 08:44:43'),
 (3, 1, 1, 'member_pocket', 'misc', 'House Rent', 14000.00, '2026-11-21', 'approved', '2026-11', '2026-11-21 09:21:28'),
-(4, 1, 3, 'member_pocket', 'grocery', 'Rice', 2500.00, '2026-11-21', 'approved', '2026-11', '2026-11-21 09:28:56'),
 (5, 1, 1, 'manager_cash', 'grocery', 'Grocery', 3000.00, '2026-11-21', 'approved', '2026-11', '2026-11-21 09:43:58');
 
 -- --------------------------------------------------------
@@ -143,7 +145,6 @@ CREATE TABLE `meals` (
 --
 
 INSERT INTO `meals` (`id`, `mess_id`, `user_id`, `meal_date`, `breakfast`, `lunch`, `dinner`) VALUES
-(1, 1, 3, '2026-11-21', 0.5, 1.0, 0.0),
 (2, 1, 1, '2026-11-21', 0.0, 1.0, 1.0);
 
 -- --------------------------------------------------------
@@ -156,6 +157,7 @@ CREATE TABLE `messes` (
   `id` int(11) NOT NULL,
   `mess_code` varchar(12) NOT NULL,
   `mess_name` varchar(120) NOT NULL,
+  `mess_logo` varchar(255) DEFAULT NULL,
   `currency_symbol` varchar(10) DEFAULT 'BDT',
   `subscription_plan` enum('free_trial','starter','pro') DEFAULT 'free_trial',
   `subscription_status` enum('active','expired') DEFAULT 'active',
@@ -168,8 +170,9 @@ CREATE TABLE `messes` (
 -- Dumping data for table `messes`
 --
 
-INSERT INTO `messes` (`id`, `mess_code`, `mess_name`, `currency_symbol`, `subscription_plan`, `subscription_status`, `trial_ends_at`, `subscription_ends_at`, `created_at`) VALUES
-(1, 'MESS-8511', 'Niribili Mess', '৳', 'free_trial', 'active', '2026-12-05 04:00:12', NULL, '2026-11-21 03:00:12');
+INSERT INTO `messes` (`id`, `mess_code`, `mess_name`, `mess_logo`, `currency_symbol`, `subscription_plan`, `subscription_status`, `trial_ends_at`, `subscription_ends_at`, `created_at`) VALUES
+(1, 'MESS-8511', 'Nirjon Mess', 'dashboard/uploads/messes/mess_1_1795277151.jpg', '৳', 'free_trial', 'active', '2026-12-05 04:00:12', NULL, '2026-11-21 03:00:12'),
+(2, 'MESS-9235', 'Shanti Hostel', NULL, '$', 'free_trial', 'active', '2026-12-05 15:17:42', NULL, '2026-11-21 14:17:42');
 
 -- --------------------------------------------------------
 
@@ -203,6 +206,8 @@ CREATE TABLE `users` (
   `id` int(11) NOT NULL,
   `mess_id` int(11) NOT NULL,
   `member_code` varchar(20) NOT NULL,
+  `room_no` varchar(30) DEFAULT NULL,
+  `seat_no` varchar(30) DEFAULT NULL,
   `full_name` varchar(100) NOT NULL,
   `email` varchar(120) DEFAULT NULL,
   `password_hash` varchar(255) NOT NULL,
@@ -216,15 +221,14 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `mess_id`, `member_code`, `full_name`, `email`, `password_hash`, `role`, `previous_balance`, `is_active`, `created_at`) VALUES
-(1, 1, 'M-101', 'Mihir Mondal', 'codepedant@gmail.com', '$2y$10$P3hHuRtNU5MTfT4Vl3KLY.U0r3rlwlNlLQcWa5K2MZ.HOyW7vRehC', 'manager', 0.00, 1, '2026-11-21 03:00:12'),
-(2, 1, 'M-102', 'Al Imran', NULL, '$2y$10$z/kZK7AGfebz/rrM6J.o3udzhaKEIJhPDJ3Ws/D/8YeIkghdTmbR2', 'member', 600.00, 0, '2026-11-21 03:01:01'),
-(3, 1, 'M-103', 'Mr. Al Imran', NULL, '$2y$10$hPNFuLQF72FcwWGgAXa5beirCOoueYiDske.0QaGms.2Y5rbyHyNa', 'member', 600.00, 1, '2026-11-21 03:01:20'),
-(4, 1, 'M-104', 'Tanvir', NULL, '$2y$10$gUg9QXKGo7pJsptq0giExeIjqyF01v.UsTu4xvyv.NYWp2TxyQ1S2', 'member', -400.00, 1, '2026-11-21 09:14:47'),
-(5, 1, 'M-105', 'Tanvir', NULL, '$2y$10$lXUae07NJztYs56vClWRiuKJDa5t1GW2CDfPAQ1F41/K88T08K9T6', 'member', -400.00, 0, '2026-11-21 09:17:15'),
-(6, 1, 'M-106', 'Tanvir', NULL, '$2y$10$JhM.d8DB.feiGRYX/gZTuOTBF88q6POh0c5YUUGVxWw.iLhSNDnTe', 'member', -400.00, 0, '2026-11-21 09:18:23'),
-(7, 1, 'M-107', 'Tanvir', NULL, '$2y$10$sJO3q1oD0kWNnHrDaXP07eYZuwE4w6gaPTS6IDsiafmE.ymqURAKe', 'member', -400.00, 0, '2026-11-21 09:18:23'),
-(8, 1, 'M-108', 'Ikramul', NULL, '$2y$10$GnYCveO574BfEDpSb5gU/uVvFN/RoyoWujmd5G68wJq2US.1nWlKC', 'member', 0.00, 1, '2026-11-21 09:50:09');
+INSERT INTO `users` (`id`, `mess_id`, `member_code`, `room_no`, `seat_no`, `full_name`, `email`, `password_hash`, `role`, `previous_balance`, `is_active`, `created_at`) VALUES
+(1, 1, 'M-101', '601', 'B', 'Mihir Mondal', 'codepedant@gmail.com', '$2y$10$P3hHuRtNU5MTfT4Vl3KLY.U0r3rlwlNlLQcWa5K2MZ.HOyW7vRehC', 'manager', 0.00, 1, '2026-11-21 03:00:12'),
+(9, 2, 'M-101', NULL, NULL, 'John Hops', 'johnhops@gmail.com', '$2y$10$QEvc43ecFTPDeai8bmLc4OpWBNPe1uBM.dUmqu3C1tCmXwnR0kzPa', 'manager', 0.00, 1, '2026-11-21 14:17:42'),
+(10, 2, 'M-102', NULL, NULL, 'Stuart Braud', NULL, '$2y$10$0A3a0DgPBiNLc.pU9zKPsOLTCC5NP99IuUHLJ1f6aJQDKOg7AwJmK', 'member', 0.00, 1, '2026-11-21 14:18:34'),
+(11, 2, 'M-103', NULL, NULL, 'Mack Grath', NULL, '$2y$10$kBphaIJDYRI5EQEi6OxAYexLa6FwnGbTOxn1Zy58Wlk8M7Sq8WqIq', 'member', -30.00, 1, '2026-11-21 14:18:58'),
+(12, 2, 'M-104', NULL, NULL, 'Aston Kooper', NULL, '$2y$10$0Mds77PdvYtLg.z9BJsZH.I1L9XEMJRy1j.StTgxBCbJHwL3Z0t.y', 'member', 12.00, 1, '2026-11-21 14:19:40'),
+(13, 1, 'M-102', '601', 'A', 'Al Imran', NULL, '$2y$10$Q7PIf3kWqUxj2F8WOL5zUuI4Gy26ivyORUqX5kBuSueYUjYSBXKam', 'member', 650.00, 1, '2026-11-21 16:06:52'),
+(14, 1, 'M-103', NULL, NULL, 'Badhon', NULL, '$2y$10$tfWp8v.jaZIUhr4Yq9GwDe5iga75YZ3saGcUKLL7rTlWuNGYsD8H2', 'member', 0.00, 1, '2026-11-21 16:08:11');
 
 --
 -- Indexes for dumped tables
@@ -297,7 +301,7 @@ ALTER TABLE `chat_messages`
 -- AUTO_INCREMENT for table `deposits`
 --
 ALTER TABLE `deposits`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `expenses`
@@ -315,7 +319,7 @@ ALTER TABLE `meals`
 -- AUTO_INCREMENT for table `messes`
 --
 ALTER TABLE `messes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `shopping_roster`
@@ -327,7 +331,7 @@ ALTER TABLE `shopping_roster`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- Constraints for dumped tables
