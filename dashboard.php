@@ -43,17 +43,24 @@ function getMonthSummary(PDO $pdo, int $messId, string $month, array $members): 
     $memberCount = max(1, count($members));
 
     // Approved Expenses
+    // Grocery from manager_cash goes into total_grocery (and thus meal cost & cash held),
+    // while only member_pocket grocery adds to an individual member's Own Grocery reimbursement.
     $expStmt = $pdo->prepare("SELECT * FROM expenses WHERE mess_id = ? AND billing_month = ? AND status = 'approved'");
     $expStmt->execute([$messId, $month]);
     $totalGrocery = 0.0;
     $totalMisc = 0.0;
     $personalGrocery = [];
     foreach ($expStmt->fetchAll() as $ex) {
+        $amt = (float)$ex['amount'];
+        $source = $ex['funding_source'] ?? 'member_pocket';
         if ($ex['category'] === 'grocery') {
-            $totalGrocery += (float)$ex['amount'];
-            $personalGrocery[$ex['paid_by_user_id']] = ($personalGrocery[$ex['paid_by_user_id']] ?? 0) + (float)$ex['amount'];
+            $totalGrocery += $amt;
+            if ($source === 'member_pocket') {
+                $payerId = (int)$ex['paid_by_user_id'];
+                $personalGrocery[$payerId] = ($personalGrocery[$payerId] ?? 0.0) + $amt;
+            }
         } else {
-            $totalMisc += (float)$ex['amount'];
+            $totalMisc += $amt;
         }
     }
 
@@ -217,28 +224,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // --- EXPENSE (GROCERY & MISC) CRUD & AUTO-MERGE APPROVAL ---
     if ($action === 'add_expense' && $subInfo['active']) {
         $cat    = $_POST['category'] === 'misc' ? 'misc' : 'grocery';
-        $desc   = trim($_POST['description']);
-        $amount = (float)$_POST['amount'];
+        $desc   = trim($_POST['description'] ?? '');
+        $amount = (float)($_POST['amount'] ?? 0);
         $status = ($role === 'manager') ? 'approved' : 'pending';
-        $paidBy = ($role === 'manager' && !empty($_POST['paid_by'])) ? (int)$_POST['paid_by'] : $currentUid;
+
+        if ($role === 'manager' && $cat === 'grocery') {
+            $fundingMode = ($_POST['funding_mode'] ?? 'manager_cash') === 'member_pocket' ? 'member_pocket' : 'manager_cash';
+            $paidBy = ($fundingMode === 'member_pocket' && !empty($_POST['paid_by'])) ? (int)$_POST['paid_by'] : $currentUid;
+        } else {
+            $fundingMode = 'member_pocket';
+            $paidBy = ($role === 'manager' && !empty($_POST['paid_by'])) ? (int)$_POST['paid_by'] : $currentUid;
+        }
 
         if ($amount > 0 && $desc !== '') {
-            $ins = $pdo->prepare("INSERT INTO expenses (mess_id, paid_by_user_id, category, description, amount, expense_date, status, billing_month) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $ins->execute([$messId, $paidBy, $cat, $desc, $amount, $today, $status, $billingMonth]);
+            $ins = $pdo->prepare("
+                INSERT INTO expenses (mess_id, paid_by_user_id, funding_source, category, description, amount, expense_date, status, billing_month)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $ins->execute([$messId, $paidBy, $fundingMode, $cat, $desc, $amount, $today, $status, $billingMonth]);
             $flash = $status === 'approved'
-                ? ucfirst($cat) . " entry added & merged."
+                ? ucfirst($cat) . " entry added (" . ($fundingMode === 'manager_cash' ? 'Manager Cash' : 'Member Pocket') . ")."
                 : ucfirst($cat) . " request submitted for Manager approval & auto-merge.";
         }
     }
 
     if ($action === 'edit_expense' && $role === 'manager' && $subInfo['active']) {
-        $expId  = (int)$_POST['expense_id'];
-        $desc   = trim($_POST['description']);
-        $amount = (float)$_POST['amount'];
-        $paidBy = (int)$_POST['paid_by'];
+        $expId       = (int)$_POST['expense_id'];
+        $desc        = trim($_POST['description'] ?? '');
+        $amount      = (float)($_POST['amount'] ?? 0);
+        $fundingMode = ($_POST['funding_mode'] ?? 'member_pocket') === 'manager_cash' ? 'manager_cash' : 'member_pocket';
+        $paidBy      = ($fundingMode === 'member_pocket' && !empty($_POST['paid_by'])) ? (int)$_POST['paid_by'] : $currentUid;
+
         if ($amount > 0 && $desc !== '') {
-            $upd = $pdo->prepare("UPDATE expenses SET description = ?, amount = ?, paid_by_user_id = ? WHERE id = ? AND mess_id = ?");
-            $upd->execute([$desc, $amount, $paidBy, $expId, $messId]);
+            $upd = $pdo->prepare("UPDATE expenses SET description = ?, amount = ?, funding_source = ?, paid_by_user_id = ? WHERE id = ? AND mess_id = ?");
+            $upd->execute([$desc, $amount, $fundingMode, $paidBy, $expId, $messId]);
             $flash = "Expense entry updated.";
         }
     }
@@ -324,7 +343,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flash = "Carried forward closing balances from {$prevMonth} into each member's Previous Balance!";
     }
 
-    // --- CHAT, STRUCTURED MEAL REQUESTS & AUTO-MERGE APPROVAL ---
+    // --- CHAT, STRUCTURED MEAL REQUESTS, AMOUNT MERGE REQUESTS & AUTO-MERGE APPROVAL ---
     if ($action === 'send_chat' && $subInfo['active']) {
         $msg     = trim($_POST['message'] ?? '');
         $reqType = $_POST['request_type'] ?? 'chat';
@@ -346,7 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, ?, 'meal_request', ?, ?, ?, ?, 0)
             ");
             $ins->execute([$messId, $currentUid, $currentUid, $summaryText, $targetDate, $reqB, $reqL, $reqD]);
-            $flash = "Meal request sent for Manager approval & auto-merge.";
+            $flash = "Meal request submitted for Manager approval & auto-merge.";
         } elseif ($reqType === 'amount_request') {
             $reqCat    = ($_POST['req_category'] ?? 'grocery') === 'misc' ? 'misc' : 'grocery';
             $reqAmount = (float)($_POST['req_amount'] ?? 0);
@@ -369,7 +388,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $flashError = "Please enter a valid amount greater than 0 for an amount merge request.";
             }
         } elseif ($msg !== '') {
-            // General Chat: no approval badge or approval button required
             $ins = $pdo->prepare("INSERT INTO chat_messages (mess_id, sender_id, message, request_type, is_processed) VALUES (?, ?, ?, 'chat', 1)");
             $ins->execute([$messId, $currentUid, $msg]);
         }
@@ -422,8 +440,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($amount > 0) {
                 $pdo->beginTransaction();
                 $insExp = $pdo->prepare("
-                    INSERT INTO expenses (mess_id, paid_by_user_id, category, description, amount, expense_date, status, billing_month)
-                    VALUES (?, ?, ?, ?, ?, ?, 'approved', ?)
+                    INSERT INTO expenses (mess_id, paid_by_user_id, funding_source, category, description, amount, expense_date, status, billing_month)
+                    VALUES (?, ?, 'member_pocket', ?, ?, ?, ?, 'approved', ?)
                 ");
                 $insExp->execute([$messId, $paidByUid, $cat, $desc, $amount, $today, $billingMonth]);
 
@@ -434,13 +452,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $flash = "Amount request (" . fmtMoney($cur, $amount) . ") approved & merged into " . strtoupper($cat) . " expenses.";
             }
         }
-    }
-
-    if ($action === 'mark_chat_done' && $role === 'manager') {
-        $chatId = (int)$_POST['chat_id'];
-        $upd = $pdo->prepare("UPDATE chat_messages SET is_processed = 1 WHERE id = ? AND mess_id = ?");
-        $upd->execute([$chatId, $messId]);
-        $flash = "Notification marked as handled.";
     }
 
     if ($action === 'activate_plan' && $role === 'manager') {
@@ -523,7 +534,7 @@ $rosterStmt = $pdo->prepare("
 $rosterStmt->execute([$messId]);
 $rosters = $rosterStmt->fetchAll();
 
-// Chat & Unprocessed Notifications
+// Chat & Unprocessed Notifications (meal_request + amount_request only)
 $chatStmt = $pdo->prepare("
     SELECT c.*, u.full_name, u.member_code
     FROM chat_messages c JOIN users u ON c.sender_id = u.id
@@ -557,15 +568,37 @@ $sumNetBal   = 0.0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($mess['mess_name']) ?> — MessMate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8fafc; color: #1e293b; font-size: 0.97rem; }
-        .card-clean { background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+        :root {
+            --mm-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --mm-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            --mm-bg-page: #f8fafc;
+            --mm-bg-card: #ffffff;
+            --mm-border-card: #e2e8f0;
+            --mm-text-main: #1e293b;
+            --mm-accent-primary: #059669;
+            --mm-row-odd: #ffffff;
+            --mm-row-even: #f1f5f9;
+            --mm-row-you: #ecfdf5;
+        }
+
+        body {
+            font-family: var(--mm-font-sans);
+            background-color: var(--mm-bg-page);
+            color: var(--mm-text-main);
+            font-size: 0.97rem;
+        }
+        .font-monospace { font-family: var(--mm-font-mono) !important; }
+        .card-clean { background: var(--mm-bg-card); border: 1px solid var(--mm-border-card); border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
         .kpi-label { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #64748b; }
         .kpi-value { font-size: 1.55rem; font-weight: 700; margin-top: 0.25rem; }
         .nav-tabs-clean .nav-link { color: #475569; font-weight: 600; font-size: 0.95rem; border: none; border-bottom: 3px solid transparent; padding: 0.85rem 1.2rem; }
-        .nav-tabs-clean .nav-link.active { color: #059669; border-bottom-color: #059669; background: transparent; }
+        .nav-tabs-clean .nav-link.active { color: var(--mm-accent-primary); border-bottom-color: var(--mm-accent-primary); background: transparent; }
 
         /* Borderless Zebra Ledger Table with Taller Rows */
         .table-ledger { border-collapse: collapse; }
@@ -574,16 +607,16 @@ $sumNetBal   = 0.0;
             background: #e2e8f0; font-weight: 700; border: none; padding: 0.95rem 0.85rem;
         }
         .table-ledger tbody tr { border: none; }
-        .table-ledger tbody tr:nth-child(odd) { background-color: #ffffff; }
-        .table-ledger tbody tr:nth-child(even) { background-color: #f1f5f9; }
-        .table-ledger tbody tr.row-you { background-color: #ecfdf5 !important; }
+        .table-ledger tbody tr:nth-child(odd) { background-color: var(--mm-row-odd); }
+        .table-ledger tbody tr:nth-child(even) { background-color: var(--mm-row-even); }
+        .table-ledger tbody tr.row-you { background-color: var(--mm-row-you) !important; }
         .table-ledger tbody td { border: none; padding: 1rem 0.85rem; vertical-align: middle; font-size: 0.96rem; }
         .table-ledger tfoot td { border: none; background-color: #e2e8f0; padding: 1rem 0.85rem; font-size: 0.96rem; }
-        .net-pill { display: inline-block; padding: 0.35rem 0.75rem; border-radius: 0.55rem; font-weight: 700; font-family: monospace; font-size: 0.96rem; }
+        .net-pill { display: inline-block; padding: 0.35rem 0.75rem; border-radius: 0.55rem; font-weight: 700; font-family: var(--mm-font-mono); font-size: 0.96rem; }
 
         /* Monthly Meal Chart Matrix */
         .meal-matrix th, .meal-matrix td { padding: 0.55rem 0.4rem; text-align: center; font-size: 0.85rem; border: none; }
-        .meal-matrix tbody tr:nth-child(odd) { background: #fff; }
+        .meal-matrix tbody tr:nth-child(odd) { background: var(--mm-row-odd); }
         .meal-matrix tbody tr:nth-child(even) { background: #f8fafc; }
         .sticky-col { position: sticky; left: 0; z-index: 2; background: inherit; text-align: left !important; padding-left: 0.85rem !important; min-width: 155px; }
     </style>
@@ -608,15 +641,13 @@ $sumNetBal   = 0.0;
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <!-- Month Switcher -->
             <form method="GET" class="d-flex align-items-center">
                 <input type="hidden" name="tab" value="<?= e($activeTab) ?>">
                 <input type="month" name="month" value="<?= e($billingMonth) ?>" onchange="this.form.submit()" class="form-control form-control-sm fw-semibold">
             </form>
 
-            <!-- Notification & Chat Drawer Button -->
             <button class="btn btn-outline-secondary btn-sm position-relative fw-semibold py-1.5 px-2.5" type="button" data-bs-toggle="offcanvas" data-bs-target="#drawerNotify">
-                <i class="bi bi-bell-fill"></i> Chat & Approvals
+                <i class="bi bi-bell-fill"></i> Chat &amp; Approvals
                 <?php if ($totalNotifications > 0): ?>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                         <?= $totalNotifications ?>
@@ -665,7 +696,7 @@ $sumNetBal   = 0.0;
         </div>
     <?php endif; ?>
 
-    <!-- INDIVIDUAL MEMBER SUMMARY CARD (SHOWN WHEN LOGGED IN AS MEMBER) -->
+    <!-- INDIVIDUAL MEMBER SUMMARY CARD -->
     <?php if ($role === 'member' && isset($currSummary['members'][$currentUid])):
         $my = $currSummary['members'][$currentUid];
     ?>
@@ -726,28 +757,28 @@ $sumNetBal   = 0.0;
     <!-- Top 4 Colored-Border KPI Cards + Sub-Labels + Live Cost Per Meal -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-lg">
-            <div class="card-clean p-4 h-100" style="border-top: 4px solid #059669;">
+            <div class="card-clean p-3 h-100" style="border-top: 4px solid #059669;">
                 <div class="kpi-label text-success">Total Funds Collected</div>
                 <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_deposits'])) ?></div>
                 <div class="small text-muted mt-1">Member deposits this month</div>
             </div>
         </div>
         <div class="col-6 col-lg">
-            <div class="card-clean p-4 h-100" style="border-top: 4px solid #d97706;">
+            <div class="card-clean p-3 h-100" style="border-top: 4px solid #d97706;">
                 <div class="kpi-label" style="color:#b45309;">Grocery Expenditure</div>
                 <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_grocery'])) ?></div>
                 <div class="small text-muted mt-1">Approved bazar &amp; food items</div>
             </div>
         </div>
         <div class="col-6 col-lg">
-            <div class="card-clean p-4 h-100" style="border-top: 4px solid #4f46e5;">
+            <div class="card-clean p-3 h-100" style="border-top: 4px solid #4f46e5;">
                 <div class="kpi-label text-primary">Misc &amp; Fixed Bills</div>
                 <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_misc'])) ?></div>
                 <div class="small text-muted mt-1"><?= e($miscSplitSub) ?></div>
             </div>
         </div>
         <div class="col-6 col-lg">
-            <div class="card-clean p-4 h-100" style="border-top: 4px solid <?= $currSummary['cash_held'] >= 0 ? '#0d9488' : '#dc2626' ?>;">
+            <div class="card-clean p-3 h-100" style="border-top: 4px solid <?= $currSummary['cash_held'] >= 0 ? '#0d9488' : '#dc2626' ?>;">
                 <div class="kpi-label" style="color:<?= $currSummary['cash_held'] >= 0 ? '#0f766e' : '#b91c1c' ?>;">Cash Held by Manager</div>
                 <div class="kpi-value <?= $currSummary['cash_held'] >= 0 ? 'text-success' : 'text-danger' ?>">
                     <?= e(fmtMoney($cur, $currSummary['cash_held'])) ?>
@@ -768,17 +799,17 @@ $sumNetBal   = 0.0;
     <ul class="nav nav-tabs nav-tabs-clean border-bottom mb-4" role="tablist">
         <li class="nav-item">
             <button class="nav-link <?= $activeTab === 'overview' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabOverview" type="button">
-                <i class="bi bi-table me-1"></i> Overview & Ledger
+                <i class="bi bi-table me-1"></i> Overview &amp; Ledger
             </button>
         </li>
         <li class="nav-item">
             <button class="nav-link <?= $activeTab === 'meals' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabMeals" type="button">
-                <i class="bi bi-egg-fried me-1"></i> Daily & Full Month Meals
+                <i class="bi bi-egg-fried me-1"></i> Daily &amp; Full Month Meals
             </button>
         </li>
         <li class="nav-item">
             <button class="nav-link <?= $activeTab === 'expenses' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabExpenses" type="button">
-                <i class="bi bi-cart4 me-1"></i> Grocery & Misc Bills
+                <i class="bi bi-cart4 me-1"></i> Grocery &amp; Misc Bills
                 <?php if (count($pendingExpenses) > 0): ?>
                     <span class="badge bg-danger ms-1"><?= count($pendingExpenses) ?></span>
                 <?php endif; ?>
@@ -803,8 +834,8 @@ $sumNetBal   = 0.0;
             <div class="card-clean overflow-hidden mb-4">
                 <div class="p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
-                        <h5 class="fw-bold mb-0">Member Accounts & Meal Ledger (<?= e($billingMonth) ?>)</h5>
-                        <small class="text-muted">Alternating shaded rows • Net Balance highlighted with color badges.</small>
+                        <h5 class="fw-bold mb-0">Member Accounts &amp; Meal Ledger (<?= e($billingMonth) ?>)</h5>
+                        <small class="text-muted">Manager-cash bazar is deducted from Manager Cash only; member-pocket bazar credits that member's Own Grocery.</small>
                     </div>
                     <span class="badge bg-light text-secondary border fs-6 py-2 px-3">Misc Split: <?= e(fmtMoney($cur, $currSummary['misc_per_member'])) ?> / member</span>
                 </div>
@@ -915,7 +946,7 @@ $sumNetBal   = 0.0;
             <!-- Deposit History & Easy One-Click Fix Card -->
             <div class="card-clean p-4">
                 <div class="mb-3">
-                    <h6 class="fw-bold mb-0">Deposit History & Balance Correction Ledger</h6>
+                    <h6 class="fw-bold mb-0">Deposit History &amp; Balance Correction Ledger</h6>
                     <small class="text-muted">Click <strong>Fix</strong> next to any deposit to enter the true amount—adjustment math is automatic.</small>
                 </div>
                 <div class="table-responsive">
@@ -1077,25 +1108,31 @@ $sumNetBal   = 0.0;
                 <div class="col-lg-6">
                     <div class="card-clean p-4 mb-4">
                         <h6 class="fw-bold mb-1"><i class="bi bi-bag-plus-fill text-warning me-1"></i> Log Grocery / Bazar Purchase</h6>
-                        <p class="small text-muted mb-3">Included in live cost-per-meal calculation once approved.</p>
+                        <p class="small text-muted mb-3">Choose <strong>Manager Cash</strong> to deduct from mess funds without crediting a member, or <strong>Member Pocket</strong> to credit that member's Own Grocery.</p>
                         <form method="POST" class="row g-2">
                             <input type="hidden" name="action" value="add_expense">
                             <input type="hidden" name="current_tab" value="expenses">
                             <input type="hidden" name="category" value="grocery">
                             <?php if ($role === 'manager'): ?>
                             <div class="col-6">
-                                <select name="paid_by" class="form-select">
-                                    <?php foreach ($members as $m): ?>
-                                        <option value="<?= $m['id'] ?>" <?= $m['id'] == $currentUid ? 'selected' : '' ?>>Paid by: <?= e($m['full_name']) ?></option>
-                                    <?php endforeach; ?>
+                                <select name="funding_mode" id="addGroceryFundingMode" onchange="toggleAddGroceryPayer()" class="form-select">
+                                    <option value="manager_cash" selected>From: Manager Cash (No Member Credit)</option>
+                                    <option value="member_pocket">From: Member Own Pocket</option>
                                 </select>
                             </div>
                             <div class="col-6">
                                 <input type="number" step="0.01" name="amount" required placeholder="Amount" class="form-control">
                             </div>
+                            <div class="col-12 d-none" id="addGroceryPayerWrap">
+                                <select name="paid_by" class="form-select">
+                                    <?php foreach ($members as $m): ?>
+                                        <option value="<?= $m['id'] ?>" <?= $m['id'] == $currentUid ? 'selected' : '' ?>>Member Paid: <?= e($m['full_name']) ?> (<?= e($m['member_code']) ?>)</option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
                             <?php else: ?>
                             <div class="col-12">
-                                <input type="number" step="0.01" name="amount" required placeholder="Amount Spent" class="form-control">
+                                <input type="number" step="0.01" name="amount" required placeholder="Amount Spent (From Your Pocket)" class="form-control">
                             </div>
                             <?php endif; ?>
                             <div class="col-12">
@@ -1119,17 +1156,25 @@ $sumNetBal   = 0.0;
                                 <thead class="table-light small">
                                     <tr>
                                         <th>Items</th>
-                                        <th>Buyer</th>
+                                        <th>Source</th>
                                         <th>Status</th>
                                         <th class="text-end">Amount</th>
                                         <?php if ($role === 'manager'): ?><th class="text-end">Edit/Del</th><?php endif; ?>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($groceryLogs as $g): ?>
+                                    <?php foreach ($groceryLogs as $g):
+                                        $src = $g['funding_source'] ?? 'member_pocket';
+                                    ?>
                                     <tr>
                                         <td><?= e($g['description']) ?><br><span class="text-muted small"><?= e($g['expense_date']) ?></span></td>
-                                        <td><?= e($g['full_name']) ?></td>
+                                        <td>
+                                            <?php if ($src === 'manager_cash'): ?>
+                                                <span class="badge bg-dark-subtle text-dark">Manager Cash</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-info-subtle text-dark"><?= e($g['full_name']) ?></span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td>
                                             <span class="badge <?= $g['status'] === 'approved' ? 'bg-success-subtle text-success' : ($g['status'] === 'pending' ? 'bg-warning text-dark' : 'bg-danger-subtle text-danger') ?>">
                                                 <?= e($g['status']) ?>
@@ -1139,7 +1184,7 @@ $sumNetBal   = 0.0;
                                         <?php if ($role === 'manager'): ?>
                                         <td class="text-end text-nowrap">
                                             <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1.5"
-                                                onclick="openEditExpense(<?= $g['id'] ?>, '<?= e($g['description']) ?>', <?= (float)$g['amount'] ?>, <?= (int)$g['paid_by_user_id'] ?>)">
+                                                onclick="openEditExpense(<?= $g['id'] ?>, '<?= e($g['description']) ?>', <?= (float)$g['amount'] ?>, <?= (int)$g['paid_by_user_id'] ?>, '<?= e($src) ?>')">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             <form method="POST" class="d-inline" onsubmit="return confirm('Delete this grocery entry?');">
@@ -1160,7 +1205,7 @@ $sumNetBal   = 0.0;
 
                 <div class="col-lg-6">
                     <div class="card-clean p-4">
-                        <h6 class="fw-bold mb-1"><i class="bi bi-receipt text-primary me-1"></i> Miscellaneous & Fixed Bills</h6>
+                        <h6 class="fw-bold mb-1"><i class="bi bi-receipt text-primary me-1"></i> Miscellaneous &amp; Fixed Bills</h6>
                         <p class="small text-muted mb-3">Cook salary, Wi-Fi, gas, electricity — split equally across all <?= count($members) ?> members (<?= e(fmtMoney($cur, $currSummary['misc_per_member'])) ?> each).</p>
                         <form method="POST" class="row g-2 mb-4">
                             <input type="hidden" name="action" value="add_expense">
@@ -1200,7 +1245,7 @@ $sumNetBal   = 0.0;
                                         <?php if ($role === 'manager'): ?>
                                         <td class="text-end text-nowrap">
                                             <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1.5"
-                                                onclick="openEditExpense(<?= $ms['id'] ?>, '<?= e($ms['description']) ?>', <?= (float)$ms['amount'] ?>, <?= (int)$ms['paid_by_user_id'] ?>)">
+                                                onclick="openEditExpense(<?= $ms['id'] ?>, '<?= e($ms['description']) ?>', <?= (float)$ms['amount'] ?>, <?= (int)$ms['paid_by_user_id'] ?>, '<?= e($ms['funding_source'] ?? 'member_pocket') ?>')">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
                                             <form method="POST" class="d-inline" onsubmit="return confirm('Delete this misc bill?');">
@@ -1396,8 +1441,7 @@ $sumNetBal   = 0.0;
                 </div>
             <?php endif; ?>
 
-            <div class="small fw-bold text-uppercase text-muted mb-2">Mess Chat &amp; Meal Requests</div>
-
+            <div class="small fw-bold text-uppercase text-muted mb-2">Mess Chat &amp; Requests</div>
             <?php foreach ($chats as $c):
                 $isMealReq   = ($c['request_type'] ?? '') === 'meal_request';
                 $isAmountReq = ($c['request_type'] ?? '') === 'amount_request';
@@ -1408,12 +1452,12 @@ $sumNetBal   = 0.0;
                     <div class="d-flex justify-content-between align-items-center">
                         <strong><?= e($c['full_name']) ?> <span class="text-muted fw-normal">(<?= e($c['member_code']) ?>)</span></strong>
                         <?php if ($isMealReq): ?>
-                            <span class="badge <?= (int)$c['is_processed'] ? 'bg-success' : 'bg-primary' ?>">
-                                <?= (int)$c['is_processed'] ? 'Merged' : 'Meal Request' ?>
+                            <span class="badge <?= (int)($c['is_processed'] ?? 0) ? 'bg-success' : 'bg-primary' ?>">
+                                <?= (int)($c['is_processed'] ?? 0) ? 'Merged' : 'Meal Request' ?>
                             </span>
                         <?php elseif ($isAmountReq): ?>
-                            <span class="badge <?= (int)$c['is_processed'] ? 'bg-success' : 'bg-warning text-dark' ?>">
-                                <?= (int)$c['is_processed'] ? 'Merged' : 'Amount Request' ?>
+                            <span class="badge <?= (int)($c['is_processed'] ?? 0) ? 'bg-success' : 'bg-warning text-dark' ?>">
+                                <?= (int)($c['is_processed'] ?? 0) ? 'Merged' : 'Amount Request' ?>
                             </span>
                         <?php else: ?>
                             <span class="badge bg-secondary-subtle text-secondary">Chat</span>
@@ -1460,7 +1504,6 @@ $sumNetBal   = 0.0;
                 <button type="submit" class="btn btn-success fw-semibold">Send</button>
             </div>
 
-            <!-- Meal Request Fields -->
             <div id="mealReqFields" class="row g-1 small bg-light p-2 rounded-3 border mb-1">
                 <div class="col-5">
                     <label class="form-label mb-0 text-muted" style="font-size:0.7rem;">Date</label>
@@ -1480,7 +1523,6 @@ $sumNetBal   = 0.0;
                 </div>
             </div>
 
-            <!-- Amount / Grocery Merge Fields -->
             <div id="amountReqFields" class="row g-1 small bg-light p-2 rounded-3 border d-none">
                 <div class="col-4">
                     <label class="form-label mb-0 text-muted" style="font-size:0.7rem;">Category</label>
@@ -1495,17 +1537,10 @@ $sumNetBal   = 0.0;
                 </div>
                 <div class="col-4">
                     <label class="form-label mb-0 text-muted" style="font-size:0.7rem;">Items / Reason</label>
-                    <input type="text" name="req_description" placeholder="e.g., Rice & Oil" class="form-control form-control-sm">
+                    <input type="text" name="req_description" placeholder="e.g., Rice &amp; Oil" class="form-control form-control-sm">
                 </div>
             </div>
         </form>
-        <script>
-        function toggleChatReqFields() {
-            const mode = document.getElementById('chatReqType').value;
-            document.getElementById('mealReqFields').classList.toggle('d-none', mode !== 'meal_request');
-            document.getElementById('amountReqFields').classList.toggle('d-none', mode !== 'amount_request');
-        }
-        </script>
     </div>
 </div>
 
@@ -1598,7 +1633,14 @@ $sumNetBal   = 0.0;
                 <input type="hidden" name="current_tab" value="expenses">
                 <input type="hidden" name="expense_id" id="editExpId">
                 <div class="mb-3">
-                    <label class="form-label small fw-semibold">Paid By</label>
+                    <label class="form-label small fw-semibold">Cash Source</label>
+                    <select name="funding_mode" id="editExpFundingMode" onchange="toggleEditExpensePayer()" class="form-select">
+                        <option value="manager_cash">Manager Cash (No Member Credit)</option>
+                        <option value="member_pocket">Member Own Pocket</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="editExpPayerWrap">
+                    <label class="form-label small fw-semibold">Member Paid</label>
                     <select name="paid_by" id="editExpPaidBy" class="form-select">
                         <?php foreach ($members as $m): ?>
                             <option value="<?= $m['id'] ?>"><?= e($m['full_name']) ?> (<?= e($m['member_code']) ?>)</option>
@@ -1684,11 +1726,28 @@ function openEditMember(uid, name, prevBal) {
     document.getElementById('editMemberPrev').value = prevBal;
     new bootstrap.Modal(document.getElementById('modalEditMember')).show();
 }
-function openEditExpense(expId, desc, amount, paidBy) {
+function toggleAddGroceryPayer() {
+    const sel = document.getElementById('addGroceryFundingMode');
+    const wrap = document.getElementById('addGroceryPayerWrap');
+    if (!sel || !wrap) return;
+    wrap.classList.toggle('d-none', sel.value !== 'member_pocket');
+}
+function toggleEditExpensePayer() {
+    const sel = document.getElementById('editExpFundingMode');
+    const wrap = document.getElementById('editExpPayerWrap');
+    if (!sel || !wrap) return;
+    wrap.classList.toggle('d-none', sel.value !== 'member_pocket');
+}
+function openEditExpense(expId, desc, amount, paidBy, fundingMode) {
     document.getElementById('editExpId').value = expId;
     document.getElementById('editExpDesc').value = desc;
     document.getElementById('editExpAmount').value = amount;
     document.getElementById('editExpPaidBy').value = paidBy;
+    const modeSelect = document.getElementById('editExpFundingMode');
+    if (modeSelect) {
+        modeSelect.value = fundingMode || 'member_pocket';
+        toggleEditExpensePayer();
+    }
     new bootstrap.Modal(document.getElementById('modalEditExpense')).show();
 }
 function openEditRoster(rosterId, uid, dutyDate, note) {
@@ -1698,9 +1757,10 @@ function openEditRoster(rosterId, uid, dutyDate, note) {
     document.getElementById('editRosterNote').value = note;
     new bootstrap.Modal(document.getElementById('modalEditRoster')).show();
 }
-function toggleMealReqFields() {
-    const isMeal = document.getElementById('chatReqType').value === 'meal_request';
-    document.getElementById('mealReqFields').classList.toggle('d-none', !isMeal);
+function toggleChatReqFields() {
+    const mode = document.getElementById('chatReqType').value;
+    document.getElementById('mealReqFields').classList.toggle('d-none', mode !== 'meal_request');
+    document.getElementById('amountReqFields').classList.toggle('d-none', mode !== 'amount_request');
 }
 </script>
 </body>
