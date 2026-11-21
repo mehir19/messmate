@@ -1,3 +1,45 @@
+<!-- MODAL: MESS PROFILE SETTINGS (MANAGER) -->
+<div class="modal fade" id="modalMessProfile" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" enctype="multipart/form-data" class="modal-content rounded-4">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold"><i class="bi bi-gear-fill me-1"></i> Mess Profile Settings</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="action" value="update_mess_profile">
+                <input type="hidden" name="current_tab" value="<?= e($activeTab) ?>">
+
+                <div class="d-flex align-items-center gap-3 mb-3 p-3 rounded-3 bg-light border">
+                    <?php if (!empty($mess['mess_logo'])): ?>
+                        <img src="<?= e($mess['mess_logo']) ?>" alt="Current mess icon"
+                             class="rounded-3 border object-fit-cover" style="width:56px;height:56px;">
+                    <?php else: ?>
+                        <div class="bg-success text-white rounded-3 d-flex align-items-center justify-content-center fw-bold fs-4" style="width:56px;height:56px;">M</div>
+                    <?php endif; ?>
+                    <div class="small">
+                        <div class="fw-bold text-dark">Current Mess Icon</div>
+                        <div class="text-muted">Upload a new PNG, JPG, WEBP, or GIF (max 2 MB)</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Mess Name</label>
+                    <input type="text" name="mess_name" value="<?= e($mess['mess_name']) ?>" required class="form-control">
+                </div>
+
+                <div>
+                    <label class="form-label small fw-semibold">Mess Icon / Image</label>
+                    <input type="file" name="mess_logo" accept="image/jpeg,image/png,image/webp,image/gif" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-dark fw-semibold">Save Mess Profile</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- MODAL: ADD MEMBER -->
 <div class="modal fade" id="modalMember" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -6,6 +48,16 @@
             <div class="modal-body">
                 <input type="hidden" name="action" value="add_member">
                 <div class="mb-3"><label class="form-label small fw-semibold">Full Name</label><input type="text" name="full_name" required class="form-control"></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Room No.</label>
+                        <input type="text" name="room_no" id="editMemberRoom" placeholder="e.g., 302" class="form-control">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Seat No.</label>
+                        <input type="text" name="seat_no" id="editMemberSeat" placeholder="e.g., B / Window" class="form-control">
+                    </div>
+                </div>
                 <div class="mb-3"><label class="form-label small fw-semibold">Previous Month Balance (+ Credit / - Due)</label><input type="number" step="0.01" name="previous_balance" value="0" class="form-control"></div>
                 <div><label class="form-label small fw-semibold">Temporary Login PIN</label><input type="text" name="pin" value="123456" required class="form-control"></div>
             </div>
@@ -23,6 +75,16 @@
                 <input type="hidden" name="action" value="edit_member">
                 <input type="hidden" name="user_id" id="editMemberId">
                 <div class="mb-3"><label class="form-label small fw-semibold">Full Name</label><input type="text" name="full_name" id="editMemberName" required class="form-control"></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Room No.</label>
+                        <input type="text" name="room_no" id="editMemberRoom" placeholder="e.g., 302" class="form-control">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Seat No.</label>
+                        <input type="text" name="seat_no" id="editMemberSeat" placeholder="e.g., B / Window" class="form-control">
+                    </div>
+                </div>
                 <div class="mb-3"><label class="form-label small fw-semibold">Previous Balance (+ Credit / - Due)</label><input type="number" step="0.01" name="previous_balance" id="editMemberPrev" required class="form-control"></div>
                 <div><label class="form-label small fw-semibold">Reset PIN / Password (Leave blank to keep current)</label><input type="text" name="new_pin" placeholder="Optional new PIN" class="form-control"></div>
             </div>
@@ -178,3 +240,4 @@
         </div>
     </div>
 </div>
+

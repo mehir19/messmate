@@ -125,9 +125,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action    = $_POST['action'] ?? '';
     $activeTab = $_POST['current_tab'] ?? 'overview';
 
+    // --- UPDATE PROFILE ---
+    if ($action === 'update_mess_profile' && $role === 'manager' && $subInfo['active']) {
+        $newMessName = trim($_POST['mess_name'] ?? '');
+        $logoPath = $mess['mess_logo'] ?? null;
+
+        if (!empty($_FILES['mess_logo']['name']) && is_uploaded_file($_FILES['mess_logo']['tmp_name'])) {
+            $file = $_FILES['mess_logo'];
+            $allowedMimes = [
+                'image/jpeg' => 'jpg',
+                'image/png'  => 'png',
+                'image/webp' => 'webp',
+                'image/gif'  => 'gif',
+            ];
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+
+            if (!isset($allowedMimes[$mime])) {
+                $flashError = "Invalid image format. Please upload a JPG, PNG, WEBP, or GIF file.";
+            } elseif ($file['size'] > 2 * 1024 * 1024) {
+                $flashError = "Mess image must be 2 MB or smaller.";
+            } else {
+                $uploadDir = __DIR__ . '/dashboard/uploads/messes';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0775, true);
+                }
+                $ext = $allowedMimes[$mime];
+                $filename = 'mess_' . $messId . '_' . time() . '.' . $ext;
+                $dest = $uploadDir . '/' . $filename;
+
+                if (move_uploaded_file($file['tmp_name'], $dest)) {
+                    if (!empty($logoPath)) {
+                        $oldFile = __DIR__ . '/' . ltrim($logoPath, '/');
+                        if (is_file($oldFile)) {
+                            @unlink($oldFile);
+                        }
+                    }
+                    $logoPath = 'dashboard/uploads/messes/' . $filename;
+                } else {
+                    $flashError = "Could not save uploaded mess image.";
+                }
+            }
+        }
+
+        if ($flashError === '') {
+            if ($newMessName === '') {
+                $flashError = "Mess name cannot be empty.";
+            } else {
+                $upd = $pdo->prepare("UPDATE messes SET mess_name = ?, mess_logo = ? WHERE id = ?");
+                $upd->execute([$newMessName, $logoPath, $messId]);
+                $mess['mess_name'] = $newMessName;
+                $mess['mess_logo'] = $logoPath;
+                $flash = "Mess profile updated.";
+            }
+        }
+    }
+
     // --- MEMBER CRUD ---
     if ($action === 'add_member' && $role === 'manager' && $subInfo['active']) {
         $name    = trim($_POST['full_name']);
+        $roomNo  = trim($_POST['room_no'] ?? '');
+        $seatNo  = trim($_POST['seat_no'] ?? '');
         $prevBal = (float)$_POST['previous_balance'];
         $pin     = $_POST['pin'] ?: '123456';
 
@@ -135,23 +194,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $countStmt->execute([$messId]);
         $nextCode = 'M-' . (101 + (int)$countStmt->fetchColumn());
 
-        $ins = $pdo->prepare("INSERT INTO users (mess_id, member_code, full_name, password_hash, role, previous_balance) VALUES (?, ?, ?, ?, 'member', ?)");
-        $ins->execute([$messId, $nextCode, $name, password_hash($pin, PASSWORD_BCRYPT), $prevBal]);
+        $ins = $pdo->prepare("
+            INSERT INTO users (mess_id, member_code, room_no, seat_no, full_name, password_hash, role, previous_balance)
+            VALUES (?, ?, ?, ?, ?, ?, 'member', ?)
+        ");
+        $ins->execute([$messId, $nextCode, $roomNo ?: null, $seatNo ?: null, $name, password_hash($pin, PASSWORD_BCRYPT), $prevBal]);
         $flash = "Added {$name} ({$nextCode}) with PIN: {$pin}";
     }
 
     if ($action === 'edit_member' && $role === 'manager' && $subInfo['active']) {
         $targetUid = (int)$_POST['user_id'];
         $name      = trim($_POST['full_name']);
+        $roomNo    = trim($_POST['room_no'] ?? '');
+        $seatNo    = trim($_POST['seat_no'] ?? '');
         $prevBal   = (float)$_POST['previous_balance'];
         $newPin    = trim($_POST['new_pin'] ?? '');
 
         if ($newPin !== '') {
-            $upd = $pdo->prepare("UPDATE users SET full_name = ?, previous_balance = ?, password_hash = ? WHERE id = ? AND mess_id = ?");
-            $upd->execute([$name, $prevBal, password_hash($newPin, PASSWORD_BCRYPT), $targetUid, $messId]);
+            $upd = $pdo->prepare("
+                UPDATE users
+                SET full_name = ?, room_no = ?, seat_no = ?, previous_balance = ?, password_hash = ?
+                WHERE id = ? AND mess_id = ?
+            ");
+            $upd->execute([$name, $roomNo ?: null, $seatNo ?: null, $prevBal, password_hash($newPin, PASSWORD_BCRYPT), $targetUid, $messId]);
         } else {
-            $upd = $pdo->prepare("UPDATE users SET full_name = ?, previous_balance = ? WHERE id = ? AND mess_id = ?");
-            $upd->execute([$name, $prevBal, $targetUid, $messId]);
+            $upd = $pdo->prepare("
+                UPDATE users
+                SET full_name = ?, room_no = ?, seat_no = ?, previous_balance = ?
+                WHERE id = ? AND mess_id = ?
+            ");
+            $upd->execute([$name, $roomNo ?: null, $seatNo ?: null, $prevBal, $targetUid, $messId]);
         }
         $flash = "Member details updated.";
     }

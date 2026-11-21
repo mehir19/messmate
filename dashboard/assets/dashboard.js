@@ -51,9 +51,13 @@ function openFixModal(depositId, memberName, currentEffectiveAmount) {
     new bootstrap.Modal(document.getElementById('modalFixDeposit')).show();
 }
 
-function openEditMember(uid, name, prevBal) {
+function openEditMember(uid, name, roomNo, seatNo, prevBal) {
     document.getElementById('editMemberId').value = uid;
     document.getElementById('editMemberName').value = name;
+    const roomEl = document.getElementById('editMemberRoom');
+    const seatEl = document.getElementById('editMemberSeat');
+    if (roomEl) roomEl.value = roomNo || '';
+    if (seatEl) seatEl.value = seatNo || '';
     document.getElementById('editMemberPrev').value = prevBal;
     new bootstrap.Modal(document.getElementById('modalEditMember')).show();
 }

@@ -2,7 +2,7 @@
     <div class="card-clean overflow-hidden">
         <div class="p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <h5 class="fw-bold mb-1">Previous Month Calculation (<?= e($prevMonth) ?>)</h5>
+                <h5 class="fw-bold mb-1">Previous Month Calculation <span class="badge bg-warning-subtle text-dark">(<?= e($prevMonth) ?>)</span></h5>
                 <p class="small text-muted mb-0">
                     Meal Rate: <strong><?= e(fmtMoney($cur, $prevSummary['cost_per_meal'])) ?></strong> •
                     Total Meals: <strong><?= number_format($prevSummary['total_meals'], 1) ?></strong> •

@@ -2,7 +2,7 @@
     <div class="card-clean overflow-hidden mb-4">
         <div class="p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-                <h5 class="fw-bold mb-0">Member Accounts &amp; Meal Ledger (<?= e($billingMonth) ?>)</h5>
+                <h5 class="fw-bold mb-0">Member Accounts &amp; Meal Ledger <span class="badge bg-warning-subtle text-dark">(<?= e($billingMonth) ?>)</span></h5>
                 <small class="text-muted">Manager-cash bazar is deducted from Manager Cash only; member-pocket bazar credits that member's Own Grocery.</small>
             </div>
             <span class="badge bg-light text-secondary border fs-6 py-2 px-3">Misc Split: <?= e(fmtMoney($cur, $currSummary['misc_per_member'])) ?> / member</span>
@@ -11,15 +11,15 @@
             <table class="table table-ledger mb-0">
                 <thead>
                     <tr>
-                        <th class="ps-4">Member</th>
-                        <th class="text-end">Prev. Balance</th>
-                        <th class="text-end">Deposited</th>
-                        <th class="text-end">Own Grocery</th>
+                        <th class="ps-4">Member ID &amp; name</th>
+                        <th class="text-end">Prev. Month Balance</th>
+                        <th class="text-end">Monthly Deposit</th>
+                        <th class="text-end">Grocery Spent</th>
                         <th class="text-end">Meals</th>
                         <th class="text-end">Meal Cost</th>
                         <th class="text-end">Misc Share</th>
                         <th class="text-end">Net Balance</th>
-                        <?php if ($role === 'manager'): ?><th class="text-end pe-4">Manage</th><?php endif; ?>
+                        <?php if ($role === 'manager'): ?><th class="text-end pe-4">Action</th><?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -44,11 +44,20 @@
                     ?>
                     <tr class="<?= $isYou ? 'row-you' : '' ?>">
                         <td class="ps-4">
-                            <span class="fw-bold text-dark"><?= e($m['full_name']) ?></span>
-                            <span class="badge bg-white text-secondary border font-monospace ms-1"><?= e($m['member_code']) ?></span>
-                            <?php if ($isYou): ?>
-                                <span class="badge bg-success text-white ms-1">You</span>
-                            <?php endif; ?>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="badge bg-white text-dark border font-monospace"><?= e($m['member_code']) ?></span>
+                                <div>
+                                    <span class="fw-bold text-dark"><?= e($m['full_name']) ?></span>
+                                    <?php if ($isYou): ?>
+                                        <span class="badge bg-success text-white">You</span>
+                                    <?php endif; ?>
+                                    <?php
+                                        $roomLabel = trim((string)($m['room_no'] ?? '')) !== '' ? 'Room: ' . e($m['room_no']) : 'Room: —';
+                                        $seatLabel = trim((string)($m['seat_no'] ?? '')) !== '' ? 'Seat: ' . e($m['seat_no']) : 'Seat: —';
+                                    ?>
+                                    <div class="small text-muted mt-0.5"><?= $roomLabel ?> • <?= $seatLabel ?></div>
+                                </div>
+                            </div>
                         </td>
                         <td class="text-end font-monospace <?= $d['prev'] < 0 ? 'text-danger' : 'text-secondary' ?>">
                             <?= ($d['prev'] >= 0 ? '+' : '') . number_format($d['prev'], 2) ?>
@@ -68,7 +77,7 @@
                         <?php if ($role === 'manager'): ?>
                         <td class="text-end pe-4">
                             <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2"
-                                onclick="openEditMember(<?= $uid ?>, '<?= e($m['full_name']) ?>', <?= (float)$m['previous_balance'] ?>)">
+                                onclick="openEditMember(<?= $uid ?>, '<?= e($m['full_name']) ?>', '<?= e($m['room_no'] ?? '') ?>', '<?= e($m['seat_no'] ?? '') ?>', <?= (float)$m['previous_balance'] ?>)">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <?php if ($m['role'] !== 'manager'): ?>

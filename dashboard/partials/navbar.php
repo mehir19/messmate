@@ -1,7 +1,12 @@
 <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top py-2.5">
     <div class="container-xl">
         <div class="d-flex align-items-center gap-2">
-            <div class="bg-success text-white rounded-3 d-flex align-items-center justify-content-center fw-bold fs-5" style="width:40px;height:40px;">M</div>
+            <?php if (!empty($mess['mess_logo'])): ?>
+                <img src="<?= e($mess['mess_logo']) ?>" alt="<?= e($mess['mess_name']) ?> icon"
+                     class="rounded-3 border object-fit-cover" style="width:40px;height:40px;">
+            <?php else: ?>
+                <div class="bg-success text-white rounded-3 d-flex align-items-center justify-content-center fw-bold fs-5" style="width:40px;height:40px;">M</div>
+            <?php endif; ?>
             <div>
                 <div class="d-flex align-items-center gap-2">
                     <span class="fw-bold text-dark fs-6"><?= e($mess['mess_name']) ?></span>
@@ -30,6 +35,9 @@
             </button>
 
             <?php if ($role === 'manager'): ?>
+                <button class="btn btn-outline-dark btn-sm fw-semibold py-1.5" data-bs-toggle="modal" data-bs-target="#modalMessProfile">
+                    <i class="bi bi-gear-fill"></i> Mess Profile
+                </button>
                 <button class="btn btn-outline-warning text-dark btn-sm fw-semibold py-1.5" data-bs-toggle="modal" data-bs-target="#modalSub">
                     <i class="bi bi-star-fill text-warning"></i> Plan
                 </button>

@@ -2,7 +2,7 @@
     <div class="card-clean p-4 mb-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             <div>
-                <h5 class="fw-bold mb-0">Daily Meal Entry (<?= e($selectedMealDate) ?>)</h5>
+                <h5 class="fw-bold mb-0">Daily Meal Entry <span class="badge bg-warning-subtle text-dark">(<?= e($selectedMealDate) ?>)</span></h5>
                 <small class="text-muted">Breakfast = 0.5 • Lunch = 1.0 • Dinner = 1.0</small>
             </div>
             <form method="GET" class="d-flex gap-2">
