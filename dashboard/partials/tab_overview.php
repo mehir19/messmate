@@ -59,16 +59,17 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="text-end <?= $d['prev'] < 0 ? 'text-danger' : 'text-secondary' ?>">
-                            <?= ($d['prev'] >= 0 ? '+' : '') . number_format($d['prev'], 2) ?>
+                        <td class="text-end <?= $d['prev'] < 0 ? 'text-danger' : ($d['prev'] > 0 ? 'text-success' : 'text-secondary') ?>">
+                            <?= ($d['prev'] > 0 ? '+' : '') . number_format($d['prev'], 2) ?>
                         </td>
-                        <td class="text-end text-success fw-semibold">
+
+                        <td class="text-end fw-semibold">
                             <?= number_format($d['deposit'], 2) ?>
                         </td>
-                        <td class="text-end"><?= number_format($d['grocery'], 2) ?></td>
+                        <td class="text-end" style="color:#b45309;"><?= number_format($d['grocery'], 2) ?></td>
                         <td class="text-end fw-bold"><?= number_format($d['meals'], 1) ?></td>
                         <td class="text-end"><?= number_format($d['meal_cost'], 2) ?></td>
-                        <td class="text-end text-muted"><?= number_format($d['misc'], 2) ?></td>
+                        <td class="text-end text-primary"><?= number_format($d['misc'], 2) ?></td>
                         <td class="text-end">
                             <span class="net-pill <?= $d['net'] >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' ?>">
                                 <?= ($d['net'] >= 0 ? '+' : '') . e(fmtMoney($cur, $d['net'])) ?>
@@ -103,7 +104,7 @@
                     <tr>
                         <td class="ps-4 text-uppercase text-secondary">Total (<?= count($members) ?> Members)</td>
                         <td class="text-end"><?= ($sumPrevBal >= 0 ? '+' : '') . number_format($sumPrevBal, 2) ?></td>
-                        <td class="text-end text-success"><?= number_format($sumDeposit, 2) ?></td>
+                        <td class="text-end"><?= number_format($sumDeposit, 2) ?></td>
                         <td class="text-end"><?= number_format($sumOwnShop, 2) ?></td>
                         <td class="text-end"><?= number_format($sumMeals, 1) ?></td>
                         <td class="text-end"><?= number_format($sumMealCost, 2) ?></td>

@@ -99,6 +99,7 @@ button, .btn {
     padding: 10px 0.85rem;
     vertical-align: middle;
     font-size: 13px;
+    font-weight: 600;
 }
 
 .table-ledger tfoot td {
