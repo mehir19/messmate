@@ -709,7 +709,7 @@ $sumNetBal   = 0.0;
 
     <?php require __DIR__ . '/dashboard/partials/kpi_cards.php'; ?>
 
-    <ul class="nav nav-tabs nav-tabs-clean bg-success-subtle rounded justify-content-between overflow-hidden mb-4" role="tablist">
+    <ul class="nav nav-tabs nav-tabs-clean rounded  mb-4" role="tablist">
         <li class="nav-item">
             <button class="nav-link <?= $activeTab === 'overview' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabOverview" type="button">
                 <i class="bi bi-table me-1"></i> Overview &amp; Ledger

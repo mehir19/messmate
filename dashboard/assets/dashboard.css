@@ -24,7 +24,7 @@ button, .btn {
 }
 
 .small, small {
-    font-size: 0.78em;
+    font-size: 0.875em;
 }
 
 .card-clean {
@@ -35,17 +35,17 @@ button, .btn {
 }
 
 .kpi-label {
-    font-size: 0.78rem;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: #64748b;
 }
 
 .kpi-value {
-    font-size: 1.55rem;
+    font-size: 1.5rem;
     font-weight: 700;
-    margin-top: 0.25rem;
+    margin-top: 1.5rem;
 }
 
 .nav-tabs-clean .nav-link {
@@ -95,8 +95,8 @@ button, .btn {
 }
 
 .table-ledger tbody td {
-    border: none;
-    padding: 1rem 0.85rem;
+    border-color: #f2f2f2;
+    padding: 10px 0.85rem;
     vertical-align: middle;
     font-size: 13px;
 }
@@ -110,8 +110,8 @@ button, .btn {
 
 .card-history table td {
     font-size: 13px;
-    padding: 13px 10px;
-    border-color: rgba(0, 0, 0, 0.03);
+    padding: 14px 10px;
+    border-color: rgba(0, 0, 0, 0.05);
 }
 
 .net-pill {
