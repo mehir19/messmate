@@ -75,7 +75,7 @@
                                         <?= e($g['status']) ?>
                                     </span>
                                 </td>
-                                <td class="text-end font-monospace fw-bold"><?= e(fmtMoney($cur, (float)$g['amount'])) ?></td>
+                                <td class="text-end fw-bold"><?= e(fmtMoney($cur, (float)$g['amount'])) ?></td>
                                 <?php if ($role === 'manager'): ?>
                                 <td class="text-end text-nowrap">
                                     <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1.5"
@@ -136,7 +136,7 @@
                             <tr>
                                 <td><?= e($ms['description']) ?></td>
                                 <td><?= e($ms['full_name']) ?></td>
-                                <td class="text-end font-monospace fw-bold"><?= e(fmtMoney($cur, (float)$ms['amount'])) ?></td>
+                                <td class="text-end fw-bold"><?= e(fmtMoney($cur, (float)$ms['amount'])) ?></td>
                                 <?php if ($role === 'manager'): ?>
                                 <td class="text-end text-nowrap">
                                     <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1.5"

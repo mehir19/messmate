@@ -15,11 +15,12 @@ body {
     font-family: var(--mm-font-sans);
     background-color: var(--mm-bg-page);
     color: var(--mm-text-main);
-    font-size: 0.97rem;
+    font-size: 14px;
 }
 
-.font-monospace {
-    font-family: var(--mm-font-mono) !important;
+.form-control,
+button, .btn {
+    font-size: 14px;
 }
 
 .small, small {
@@ -50,10 +51,10 @@ body {
 .nav-tabs-clean .nav-link {
     color: #475569;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     border: none;
     border-bottom: 3px solid transparent;
-    padding: 0.85rem 1.2rem;
+    padding: 12px 20px;
 }
 
 .nav-tabs-clean .nav-link.active {
@@ -68,7 +69,7 @@ body {
 }
 
 .table-ledger thead th {
-    font-size: 0.75rem;
+    font-size: 13px;
     text-transform: uppercase;
     color: #475569;
     background: #e2e8f0;
@@ -97,14 +98,20 @@ body {
     border: none;
     padding: 1rem 0.85rem;
     vertical-align: middle;
-    font-size: 0.96rem;
+    font-size: 13px;
 }
 
 .table-ledger tfoot td {
     border: none;
     background-color: #e2e8f0;
     padding: 1rem 0.85rem;
-    font-size: 0.96rem;
+    font-size: 13px;
+}
+
+.card-history table td {
+    font-size: 13px;
+    padding: 13px 10px;
+    border-color: rgba(0, 0, 0, 0.03);
 }
 
 .net-pill {
@@ -113,7 +120,7 @@ body {
     border-radius: 0.55rem;
     font-weight: 700;
     font-family: var(--mm-font-mono);
-    font-size: 0.96rem;
+    font-size: 14px;
 }
 
 /* Monthly Meal Chart Matrix */

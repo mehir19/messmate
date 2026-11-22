@@ -35,7 +35,7 @@
                             $daySum = (float)$tm['breakfast'] + (float)$tm['lunch'] + (float)$tm['dinner'];
                         ?>
                         <tr>
-                            <td class="fw-semibold"><?= e($m['full_name']) ?> <span class="badge bg-light text-dark border font-monospace"><?= e($m['member_code']) ?></span></td>
+                            <td class="fw-semibold"><?= e($m['full_name']) ?> <span class="badge bg-light text-dark border"><?= e($m['member_code']) ?></span></td>
                             <td><input type="number" step="0.5" min="0" max="5" name="meals[<?= $uid ?>][b]" value="<?= $tm['breakfast'] ?>" <?= $role !== 'manager' ? 'disabled' : '' ?> class="form-control text-center"></td>
                             <td><input type="number" step="0.5" min="0" max="5" name="meals[<?= $uid ?>][l]" value="<?= $tm['lunch'] ?>" <?= $role !== 'manager' ? 'disabled' : '' ?> class="form-control text-center"></td>
                             <td><input type="number" step="0.5" min="0" max="5" name="meals[<?= $uid ?>][d]" value="<?= $tm['dinner'] ?>" <?= $role !== 'manager' ? 'disabled' : '' ?> class="form-control text-center"></td>

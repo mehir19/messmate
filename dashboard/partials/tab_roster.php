@@ -43,7 +43,7 @@
                     <?php foreach ($rosters as $r): ?>
                     <tr>
                         <td class="fw-semibold"><?= e($r['duty_date']) ?></td>
-                        <td><?= e($r['full_name']) ?> <span class="badge bg-light text-dark border font-monospace"><?= e($r['member_code']) ?></span></td>
+                        <td><?= e($r['full_name']) ?> <span class="badge bg-light text-dark border"><?= e($r['member_code']) ?></span></td>
                         <td class="text-muted"><?= e($r['items_note'] ?: 'Regular grocery bazar') ?></td>
                         <td>
                             <span class="badge <?= $r['status'] === 'completed' ? 'bg-success' : 'bg-warning text-dark' ?>">

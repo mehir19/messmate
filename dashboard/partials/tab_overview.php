@@ -5,7 +5,7 @@
                 <h5 class="fw-bold mb-0">Member Accounts &amp; Meal Ledger <span class="badge bg-warning-subtle text-dark">(<?= e($billingMonth) ?>)</span></h5>
                 <small class="text-muted">Manager-cash bazar is deducted from Manager Cash only; member-pocket bazar credits that member's Own Grocery.</small>
             </div>
-            <span class="badge bg-light text-secondary border fs-6 py-2 px-3">Misc Split: <?= e(fmtMoney($cur, $currSummary['misc_per_member'])) ?> / member</span>
+            <span class="badge bg-warning-subtle text-dark border py-2 px-3">Misc Split: <?= e(fmtMoney($cur, $currSummary['misc_per_member'])) ?> / member</span>
         </div>
         <div class="table-responsive">
             <table class="table table-ledger mb-0">
@@ -45,9 +45,9 @@
                     <tr class="<?= $isYou ? 'row-you' : '' ?>">
                         <td class="ps-4">
                             <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <span class="badge bg-white text-dark border font-monospace"><?= e($m['member_code']) ?></span>
+                                <span class="badge bg-white text-dark border"><?= e($m['member_code']) ?></span>
                                 <div>
-                                    <span class="fw-bold text-dark"><?= e($m['full_name']) ?></span>
+                                    <span class="fw-semibold text-dark"><?= e($m['full_name']) ?></span>
                                     <?php if ($isYou): ?>
                                         <span class="badge bg-success text-white">You</span>
                                     <?php endif; ?>
@@ -59,16 +59,16 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="text-end font-monospace <?= $d['prev'] < 0 ? 'text-danger' : 'text-secondary' ?>">
+                        <td class="text-end <?= $d['prev'] < 0 ? 'text-danger' : 'text-secondary' ?>">
                             <?= ($d['prev'] >= 0 ? '+' : '') . number_format($d['prev'], 2) ?>
                         </td>
-                        <td class="text-end font-monospace text-success fw-semibold">
+                        <td class="text-end text-success fw-semibold">
                             <?= number_format($d['deposit'], 2) ?>
                         </td>
-                        <td class="text-end font-monospace"><?= number_format($d['grocery'], 2) ?></td>
+                        <td class="text-end"><?= number_format($d['grocery'], 2) ?></td>
                         <td class="text-end fw-bold"><?= number_format($d['meals'], 1) ?></td>
-                        <td class="text-end font-monospace"><?= number_format($d['meal_cost'], 2) ?></td>
-                        <td class="text-end font-monospace text-muted"><?= number_format($d['misc'], 2) ?></td>
+                        <td class="text-end"><?= number_format($d['meal_cost'], 2) ?></td>
+                        <td class="text-end text-muted"><?= number_format($d['misc'], 2) ?></td>
                         <td class="text-end">
                             <span class="net-pill <?= $d['net'] >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' ?>">
                                 <?= ($d['net'] >= 0 ? '+' : '') . e(fmtMoney($cur, $d['net'])) ?>
@@ -102,12 +102,12 @@
                 <tfoot class="fw-bold">
                     <tr>
                         <td class="ps-4 text-uppercase text-secondary">Total (<?= count($members) ?> Members)</td>
-                        <td class="text-end font-monospace"><?= ($sumPrevBal >= 0 ? '+' : '') . number_format($sumPrevBal, 2) ?></td>
-                        <td class="text-end font-monospace text-success"><?= number_format($sumDeposit, 2) ?></td>
-                        <td class="text-end font-monospace"><?= number_format($sumOwnShop, 2) ?></td>
+                        <td class="text-end"><?= ($sumPrevBal >= 0 ? '+' : '') . number_format($sumPrevBal, 2) ?></td>
+                        <td class="text-end text-success"><?= number_format($sumDeposit, 2) ?></td>
+                        <td class="text-end"><?= number_format($sumOwnShop, 2) ?></td>
                         <td class="text-end"><?= number_format($sumMeals, 1) ?></td>
-                        <td class="text-end font-monospace"><?= number_format($sumMealCost, 2) ?></td>
-                        <td class="text-end font-monospace"><?= number_format($sumMisc, 2) ?></td>
+                        <td class="text-end"><?= number_format($sumMealCost, 2) ?></td>
+                        <td class="text-end"><?= number_format($sumMisc, 2) ?></td>
                         <td class="text-end">
                             <span class="net-pill <?= $sumNetBal >= 0 ? 'bg-success text-white' : 'bg-danger text-white' ?>">
                                 <?= ($sumNetBal >= 0 ? '+' : '') . e(fmtMoney($cur, $sumNetBal)) ?>
@@ -120,7 +120,7 @@
         </div>
     </div>
 
-    <div class="card-clean p-4">
+    <div class="card-clean card-history p-4">
         <div class="mb-3">
             <h6 class="fw-bold mb-0">Deposit History &amp; Repeat-Safe Balance Correction Ledger</h6>
             <small class="text-muted">Click <strong>Fix</strong> next to any deposit to see its current effective total and adjust safely multiple times.</small>
@@ -153,7 +153,7 @@
                             </span>
                         </td>
                         <td><?= e($dp['note']) ?></td>
-                        <td class="text-end font-monospace fw-bold <?= $currEffAmt < 0 ? 'text-danger' : 'text-success' ?>">
+                        <td class="text-end fw-bold <?= $currEffAmt < 0 ? 'text-danger' : 'text-success' ?>">
                             <?= ($currEffAmt >= 0 ? '+' : '') . e(fmtMoney($cur, $currEffAmt)) ?>
                             <?php if (!$isCorr && $adjAmt != 0): ?>
                                 <div class="small text-muted fw-normal">Orig: <?= e(fmtMoney($cur, $origAmt)) ?></div>

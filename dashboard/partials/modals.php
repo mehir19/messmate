@@ -130,7 +130,7 @@
 
                 <div class="p-3 rounded-3 bg-light border mb-3 small">
                     <div>Member: <strong id="fixMemberName"></strong></div>
-                    <div>Current Effective Amount: <strong id="fixCurrentDisplay" class="text-success font-monospace"></strong></div>
+                    <div>Current Effective Amount: <strong id="fixCurrentDisplay" class="text-success"></strong></div>
                     <div class="mt-1">Calculated Adjustment: <strong id="fixDiffPreview" class="font-monospace">0.00</strong></div>
                 </div>
 

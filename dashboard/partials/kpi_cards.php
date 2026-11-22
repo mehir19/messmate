@@ -5,7 +5,7 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div>
             <span class="badge bg-success text-white mb-1">MY PERSONAL ACCOUNT (<?= e($billingMonth) ?>)</span>
-            <h5 class="fw-bold mb-0"><?= e($currentUserRecord['full_name']) ?> <span class="text-muted font-monospace fs-6">(<?= e($currentUserRecord['member_code']) ?>)</span></h5>
+            <h5 class="fw-bold mb-0"><?= e($currentUserRecord['full_name']) ?> <span class="text-muted fs-6">(<?= e($currentUserRecord['member_code']) ?>)</span></h5>
         </div>
         <div class="text-end">
             <div class="small text-muted fw-semibold text-uppercase">My Net Balance</div>
@@ -18,19 +18,19 @@
         <div class="col-6 col-md-2">
             <div class="p-2.5 rounded-3 bg-light">
                 <div class="small text-muted">Prev. Balance</div>
-                <div class="fw-bold font-monospace"><?= ($my['prev'] >= 0 ? '+' : '') . e(fmtMoney($cur, $my['prev'])) ?></div>
+                <div class="fw-bold"><?= ($my['prev'] >= 0 ? '+' : '') . e(fmtMoney($cur, $my['prev'])) ?></div>
             </div>
         </div>
         <div class="col-6 col-md-2">
             <div class="p-2.5 rounded-3 bg-light">
                 <div class="small text-muted">My Deposits</div>
-                <div class="fw-bold font-monospace text-success"><?= e(fmtMoney($cur, $my['deposit'])) ?></div>
+                <div class="fw-bold text-success"><?= e(fmtMoney($cur, $my['deposit'])) ?></div>
             </div>
         </div>
         <div class="col-6 col-md-2">
             <div class="p-2.5 rounded-3 bg-light">
                 <div class="small text-muted">Own Grocery</div>
-                <div class="fw-bold font-monospace"><?= e(fmtMoney($cur, $my['grocery'])) ?></div>
+                <div class="fw-bold"><?= e(fmtMoney($cur, $my['grocery'])) ?></div>
             </div>
         </div>
         <div class="col-6 col-md-2">
@@ -42,13 +42,13 @@
         <div class="col-6 col-md-2">
             <div class="p-2.5 rounded-3 bg-light">
                 <div class="small text-muted">My Meal Cost</div>
-                <div class="fw-bold font-monospace"><?= e(fmtMoney($cur, $my['meal_cost'])) ?></div>
+                <div class="fw-bold"><?= e(fmtMoney($cur, $my['meal_cost'])) ?></div>
             </div>
         </div>
         <div class="col-6 col-md-2">
             <div class="p-2.5 rounded-3 bg-light">
                 <div class="small text-muted">My Misc Share</div>
-                <div class="fw-bold font-monospace"><?= e(fmtMoney($cur, $my['misc'])) ?></div>
+                <div class="fw-bold"><?= e(fmtMoney($cur, $my['misc'])) ?></div>
             </div>
         </div>
     </div>

@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top py-2.5">
+<nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top py-3 gap-4">
     <div class="container-xl">
         <div class="d-flex align-items-center gap-2">
             <?php if (!empty($mess['mess_logo'])): ?>
@@ -10,7 +10,7 @@
             <div>
                 <div class="d-flex align-items-center gap-2">
                     <span class="fw-bold text-dark fs-6"><?= e($mess['mess_name']) ?></span>
-                    <span class="badge bg-light text-dark border font-monospace"><?= e($mess['mess_code']) ?></span>
+                    <span class="badge bg-light text-dark border"><?= e($mess['mess_code']) ?></span>
                 </div>
                 <div class="small text-muted">
                     User: <strong><?= e($currentUserRecord['full_name'] ?? '') ?></strong> (<span class="text-success text-uppercase fw-bold"><?= e($role) ?></span>) •

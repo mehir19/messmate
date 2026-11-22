@@ -39,13 +39,13 @@
                         $pd  = $prevSummary['members'][$uid];
                     ?>
                     <tr>
-                        <td class="ps-4 fw-bold"><?= e($m['full_name']) ?> <span class="badge bg-white text-secondary border font-monospace"><?= e($m['member_code']) ?></span></td>
-                        <td class="text-end font-monospace"><?= ($pd['prev'] >= 0 ? '+' : '') . number_format($pd['prev'], 2) ?></td>
-                        <td class="text-end font-monospace text-success"><?= number_format($pd['deposit'], 2) ?></td>
-                        <td class="text-end font-monospace"><?= number_format($pd['grocery'], 2) ?></td>
+                        <td class="ps-4 fw-bold"><?= e($m['full_name']) ?> <span class="badge bg-white text-secondary border"><?= e($m['member_code']) ?></span></td>
+                        <td class="text-end"><?= ($pd['prev'] >= 0 ? '+' : '') . number_format($pd['prev'], 2) ?></td>
+                        <td class="text-end text-success"><?= number_format($pd['deposit'], 2) ?></td>
+                        <td class="text-end"><?= number_format($pd['grocery'], 2) ?></td>
                         <td class="text-end fw-bold"><?= number_format($pd['meals'], 1) ?></td>
-                        <td class="text-end font-monospace"><?= number_format($pd['meal_cost'], 2) ?></td>
-                        <td class="text-end font-monospace text-muted"><?= number_format($pd['misc'], 2) ?></td>
+                        <td class="text-end"><?= number_format($pd['meal_cost'], 2) ?></td>
+                        <td class="text-end text-muted"><?= number_format($pd['misc'], 2) ?></td>
                         <td class="text-end pe-4">
                             <span class="net-pill <?= $pd['net'] >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' ?>">
                                 <?= ($pd['net'] >= 0 ? '+' : '') . e(fmtMoney($cur, $pd['net'])) ?>
