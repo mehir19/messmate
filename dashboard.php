@@ -130,6 +130,7 @@ function getMonthSummary(PDO $pdo, int $messId, string $month, array $members): 
         'total_deposits'              => $totalDeposits,
         'total_funds'                 => $totalFunds,
         'total_grocery'               => $totalGrocery,
+        'total_expenses'              => $totalExpenses,
         'manager_cash_grocery'        => $managerCashGrocery,
         'member_pocket_grocery_total' => $memberPocketGroceryTotal,
         'total_misc'                  => $totalMisc,
@@ -785,70 +786,72 @@ if (!is_file($dailyBackupFile)) {
 
 <?php require __DIR__ . '/dashboard/partials/navbar.php'; ?>
 
-<div class="container-xl py-4">
+<div class="mm-main-content">
+    <div class="container-fluid px-3 px-lg-4 py-4">
 
-    <?php if (!$subInfo['active']): ?>
-        <div class="alert alert-danger d-flex justify-content-between align-items-center rounded-4">
-            <div><strong>Subscription Expired!</strong> Dashboard is in read-only mode until renewed.</div>
-            <?php if ($role === 'manager'): ?>
-                <button class="btn btn-light btn-sm fw-bold text-danger" data-bs-toggle="modal" data-bs-target="#modalSub">Renew Plan</button>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($flash): ?>
-        <div class="alert alert-success alert-dismissible fade show rounded-3 py-2.5 fw-semibold" role="alert">
-            <i class="bi bi-check-circle-fill me-1"></i> <?= e($flash) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($flashError !== ''): ?>
-        <div class="alert alert-danger alert-dismissible fade show rounded-3 py-2.5 fw-semibold" role="alert">
-            <i class="bi bi-shield-exclamation me-1"></i> <?= e($flashError) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <?php require __DIR__ . '/dashboard/partials/kpi_cards.php'; ?>
-
-    <ul class="nav nav-tabs nav-tabs-clean rounded  mb-4" role="tablist">
-        <li class="nav-item">
-            <button class="nav-link <?= $activeTab === 'overview' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabOverview" type="button">
-                <i class="bi bi-table me-1"></i> Overview &amp; Ledger
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link <?= $activeTab === 'meals' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabMeals" type="button">
-                <i class="bi bi-egg-fried me-1"></i> Daily &amp; Full Month Meals
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link <?= $activeTab === 'expenses' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabExpenses" type="button">
-                <i class="bi bi-cart4 me-1"></i> Grocery &amp; Misc Bills
-                <?php if (count($pendingExpenses) > 0): ?>
-                    <span class="badge bg-danger ms-1"><?= count($pendingExpenses) ?></span>
+        <?php if (!$subInfo['active']): ?>
+            <div class="alert alert-danger d-flex justify-content-between align-items-center rounded-4">
+                <div><strong>Subscription Expired!</strong> Dashboard is in read-only mode until renewed.</div>
+                <?php if ($role === 'manager'): ?>
+                    <button class="btn btn-light btn-sm fw-bold text-danger" data-bs-toggle="modal" data-bs-target="#modalSub">Renew Plan</button>
                 <?php endif; ?>
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link <?= $activeTab === 'roster' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabRoster" type="button">
-                <i class="bi bi-calendar-check me-1"></i> Shopping Roster
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link <?= $activeTab === 'prevmonth' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabPrevMonth" type="button">
-                <i class="bi bi-clock-history me-1"></i> Previous Month (<?= e($prevMonth) ?>)
-            </button>
-        </li>
-    </ul>
+            </div>
+        <?php endif; ?>
 
-    <div class="tab-content">
-        <?php require __DIR__ . '/dashboard/partials/tab_overview.php'; ?>
-        <?php require __DIR__ . '/dashboard/partials/tab_meals.php'; ?>
-        <?php require __DIR__ . '/dashboard/partials/tab_expenses.php'; ?>
-        <?php require __DIR__ . '/dashboard/partials/tab_roster.php'; ?>
-        <?php require __DIR__ . '/dashboard/partials/tab_prevmonth.php'; ?>
+        <?php if ($flash): ?>
+            <div class="alert alert-success alert-dismissible fade show rounded-3 py-2.5 fw-semibold" role="alert">
+                <i class="bi bi-check-circle-fill me-1"></i> <?= e($flash) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($flashError !== ''): ?>
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 py-2.5 fw-semibold" role="alert">
+                <i class="bi bi-shield-exclamation me-1"></i> <?= e($flashError) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php require __DIR__ . '/dashboard/partials/kpi_cards.php'; ?>
+
+        <ul class="nav nav-tabs nav-tabs-clean rounded  mb-4" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link <?= $activeTab === 'overview' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabOverview" type="button">
+                    <i class="bi bi-table me-1"></i> Overview &amp; Ledger
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link <?= $activeTab === 'meals' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabMeals" type="button">
+                    <i class="bi bi-egg-fried me-1"></i> Daily &amp; Full Month Meals
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link <?= $activeTab === 'expenses' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabExpenses" type="button">
+                    <i class="bi bi-cart4 me-1"></i> Grocery &amp; Misc Bills
+                    <?php if (count($pendingExpenses) > 0): ?>
+                        <span class="badge bg-danger ms-1"><?= count($pendingExpenses) ?></span>
+                    <?php endif; ?>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link <?= $activeTab === 'roster' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabRoster" type="button">
+                    <i class="bi bi-calendar-check me-1"></i> Shopping Roster
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link <?= $activeTab === 'prevmonth' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabPrevMonth" type="button">
+                    <i class="bi bi-clock-history me-1"></i> Previous Month (<?= e($prevMonth) ?>)
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <?php require __DIR__ . '/dashboard/partials/tab_overview.php'; ?>
+            <?php require __DIR__ . '/dashboard/partials/tab_meals.php'; ?>
+            <?php require __DIR__ . '/dashboard/partials/tab_expenses.php'; ?>
+            <?php require __DIR__ . '/dashboard/partials/tab_roster.php'; ?>
+            <?php require __DIR__ . '/dashboard/partials/tab_prevmonth.php'; ?>
+        </div>
     </div>
 </div>
 

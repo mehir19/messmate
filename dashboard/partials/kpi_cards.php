@@ -8,9 +8,6 @@
                 MY PERSONAL ACCOUNT (<?= e($billingMonth) ?>)<?= $role === 'manager' ? ' • MANAGER' : '' ?>
             </span>
             <h6 class="fw-bold mt-2 mb-0"><?= e($currentUserRecord['full_name']) ?> <span class="text-muted fs-6">(<?= e($currentUserRecord['member_code']) ?>)</span></h6>
-            <?php if ($role === 'manager'): ?>
-                <div class="small text-muted mt-1">Personal ledger figures only — separate from mess-wide funds and cash held.</div>
-            <?php endif; ?>
         </div>
         <div class="text-end">
             <div class="small text-muted fw-semibold text-uppercase">My Net Balance</div>
@@ -60,51 +57,95 @@
 </div>
 <?php endif; ?>
 
-<div class="row g-3 mb-4">
-    <div class="col-6 col-lg">
-        <div class="card-clean p-4 h-100">
-            <div class="kpi-label text-secondary">Manager Prev. Balance</div>
+<!-- ROW 1: FUNDS INFLOW, CASH WITH MANAGER & LIVE MEAL RATE -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-xl">
+        <div class="card-clean p-3 h-100">
+            <div class="kpi-label">Prev. Balance</div>
             <div class="kpi-value <?= $currSummary['manager_prev_balance'] >= 0 ? 'text-dark' : 'text-danger' ?>">
                 <?= ($currSummary['manager_prev_balance'] >= 0 ? '+' : '') . e(fmtMoney($cur, $currSummary['manager_prev_balance'])) ?>
             </div>
-            <div class="small text-muted mt-1">Carried forward balance</div>
+            <div class="small text-muted mt-1">Manager carried forward</div>
         </div>
     </div>
-    <div class="col-6 col-lg">
-        <div class="card-clean p-4 h-100" >
-            <div class="kpi-label text-success">Total Funds (Deposit + Own Shop)</div>
-            <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_funds'])) ?></div>
-            <div class="small text-muted mt-1"><?= e($fundsFormulaSub) ?></div>
+    <div class="col-6 col-xl">
+        <div class="card-clean p-3 h-100">
+            <div class="kpi-label">Deposits This Month</div>
+            <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_deposits'])) ?></div>
+            <div class="small text-muted mt-1">Cash deposited by members</div>
         </div>
     </div>
-    <div class="col-6 col-lg">
-        <div class="card-clean p-4 h-100">
-            <div class="kpi-label" style="color:#b45309;">Grocery Expenditure</div>
-            <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_grocery'])) ?></div>
-            <div class="small text-muted mt-1">Mgr Cash: <?= e(fmtMoney($cur, $currSummary['manager_cash_grocery'])) ?> • Own Pocket: <?= e(fmtMoney($cur, $currSummary['member_pocket_grocery_total'])) ?></div>
+    <div class="col-6 col-xl">
+        <div class="card-clean p-3 h-100">
+            <div class="kpi-label">Member Own Shop</div>
+            <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['member_pocket_grocery_total'])) ?></div>
+            <div class="small text-muted mt-1">Shop by members</div>
         </div>
     </div>
-    <div class="col-6 col-lg">
-        <div class="card-clean p-4 h-100">
-            <div class="kpi-label text-primary">Misc &amp; Fixed Bills</div>
+    <div class="col-6 col-xl">
+        <div class="card-clean p-3 h-100">
+            <div class="kpi-label text-success">Total Funds</div>
+            <div class="kpi-value text-success"><?= e(fmtMoney($cur, $currSummary['total_funds'])) ?></div>
+            <div class="small text-muted mt-1">Monthly deposits + Member shop</div>
+        </div>
+    </div>
+</div>
+
+<!-- ROW 2: EXPENSES BREAKDOWN -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl">
+        <div class="card-clean p-3 h-100">
+            <div class="kpi-label">Manager Cash Grocery</div>
+            <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['manager_cash_grocery'])) ?></div>
+            <div class="small text-muted mt-1">Paid from manager cash</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl">
+        <div class="card-clean p-3 h-100">
+            <div class="kpi-label">Own Pocket Grocery</div>
+            <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['member_pocket_grocery_total'])) ?></div>
+            <div class="small text-muted mt-1">Paid by members directly</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl">
+        <div class="card-clean p-3 h-100">
+            <div class="kpi-label">Misc &amp; Fixed Bills</div>
             <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_misc'])) ?></div>
             <div class="small text-muted mt-1"><?= e($miscSplitSub) ?></div>
         </div>
     </div>
-    <div class="col-6 col-lg">
-        <div class="card-clean p-4 h-100" >
-            <div class="kpi-label" style="color:<?= $currSummary['cash_held'] >= 0 ? '#0f766e' : '#b91c1c' ?>;">Cash With Manager</div>
-            <div class="kpi-value <?= $currSummary['cash_held'] >= 0 ? 'text-success' : 'text-danger' ?>">
-                <?= e(fmtMoney($cur, $currSummary['cash_held'])) ?>
-            </div>
-            <div class="small text-muted mt-1"><?= e($cashFormulaSub) ?></div>
-        </div>
-    </div>
-    <div class="col-12 col-lg">
-        <div class="card border-0 rounded-4 p-4 h-100 text-white" style="background:#0f172a;">
-            <div class="kpi-label" style="color: #34d399">Live Cost Per Meal</div>
-            <div class="kpi-value"><?= e(fmtMoney($cur, $currSummary['cost_per_meal'])) ?></div>
-            <div class="small text-white-50 mt-1">Total Meals: <?= number_format($currSummary['total_meals'], 1) ?></div>
+    <div class="col-6 col-xl">
+        <div class="card-clean p-3 h-100">
+            <div class="kpi-label text-danger">Total Expenses</div>
+            <div class="kpi-value text-danger"><?= e(fmtMoney($cur, $currSummary['total_expenses'])) ?></div>
+            <div class="small text-muted mt-1">All Grocery + Misc.</div>
         </div>
     </div>
 </div>
+
+<!-- ROW 3: EXPENSES BREAKDOWN -->
+<div class="row g-3">
+    <div class="col-6 col-xl">
+        <div class="card border-0 rounded-4 p-3 h-100 text-white" style="background:#b45309;">
+            <div class="kpi-label text-white">Total Grocery Cost</div>
+            <div class="kpi-value text-white"><?= e(fmtMoney($cur, $currSummary['total_grocery'])) ?></div>
+            <div class="small text-white mt-1">Paid by Manager + Paid by Member</div>
+        </div>
+    </div>
+    <div class="col-6 col-xl">
+        <div class="card border-0 rounded-4 p-3 h-100 text-white" style="background:#0f172a;">
+            <div class="kpi-label" style="color:#34d399;">Live Cost Per Meal</div>
+            <div class="kpi-value"><?= e(fmtMoney($cur, $currSummary['cost_per_meal'])) ?></div>
+            <div class="small text-white mt-1">Total Grocery Cost / Total Meals: <?= number_format($currSummary['total_meals'], 1) ?></div>
+        </div>
+    </div>
+    <div class="col-12 col-xl">
+        <div class="card border-0 rounded-4 p-3 h-100 text-white bg-success">
+            <div class="kpi-label" style="color:<?= $currSummary['cash_held'] >= 0 ? '#ffffff' : '#b91c1c' ?>;">Cash With Manager</div>
+            <div class="kpi-value <?= $currSummary['cash_held'] >= 0 ? 'text-white' : 'text-danger' ?>">
+                <?= e(fmtMoney($cur, $currSummary['cash_held'])) ?>
+            </div>
+            <div class="small text-white mt-1">Total Funds - Total Expenses</div>
+        </div>
+    </div>
+<div>

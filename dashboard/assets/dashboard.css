@@ -150,3 +150,23 @@ button, .btn {
     padding-left: 0.85rem !important;
     min-width: 155px;
 }
+
+@media (min-width: 992px) {
+    .mm-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 260px;
+        z-index: 1030;
+        overflow-y: auto;
+    }
+
+    .mm-sidebar-inner {
+        min-height: 100vh;
+    }
+
+    .mm-main-content {
+        margin-left: 260px;
+    }
+}
