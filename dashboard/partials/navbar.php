@@ -24,6 +24,12 @@
                 <input type="hidden" name="tab" value="<?= e($activeTab) ?>">
                 <input type="month" name="month" value="<?= e($billingMonth) ?>" onchange="this.form.submit()" class="form-control form-control-sm fw-semibold">
             </form>
+            <a href="export_backup.php?month=<?= urlencode($billingMonth) ?>&auto_pdf=1"
+                target="_blank"
+                class="btn btn-outline-danger btn-sm fw-semibold py-1.5"
+                title="Download full daily calculation & ledger backup as PDF">
+                    <i class="bi bi-file-earmark-pdf-fill"></i> Daily PDF Backup
+            </a>
 
             <button class="btn btn-outline-secondary btn-sm position-relative fw-semibold py-1.5 px-2.5" type="button" data-bs-toggle="offcanvas" data-bs-target="#drawerNotify">
                 <i class="bi bi-bell-fill"></i> Chat &amp; Approvals

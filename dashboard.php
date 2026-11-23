@@ -747,6 +747,26 @@ $sumMeals    = 0.0;
 $sumMealCost = 0.0;
 $sumMisc     = 0.0;
 $sumNetBal   = 0.0;
+
+$backupDir = __DIR__ . '/dashboard/backups';
+$dailyBackupFile = $backupDir . "/backup_mess_{$messId}_{$billingMonth}_{$today}.json";
+if (!is_file($dailyBackupFile)) {
+    if (!is_dir($backupDir)) {
+        @mkdir($backupDir, 0775, true);
+    }
+    $snapshotPayload = [
+        'generated_at' => date('Y-m-d H:i:s'),
+        'mess'         => ['id' => $messId, 'name' => $mess['mess_name'], 'code' => $mess['mess_code']],
+        'month'        => $billingMonth,
+        'summary'      => $currSummary,
+        'members'      => $members,
+        'deposits'     => $allDeposits,
+        'expenses'     => $allExpenses,
+        'meal_matrix'  => $mealMatrix,
+        'roster'       => $rosters,
+    ];
+    @file_put_contents($dailyBackupFile, json_encode($snapshotPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
