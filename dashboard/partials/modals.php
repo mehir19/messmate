@@ -206,8 +206,28 @@
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="mb-3"><label class="form-label small fw-semibold">Duty Date</label><input type="date" name="duty_date" id="editRosterDate" required class="form-control"></div>
-                <div><label class="form-label small fw-semibold">Notes</label><input type="text" name="items_note" id="editRosterNote" class="form-control"></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Start Date</label>
+                        <input type="date" name="duty_date" id="editRosterDate" required class="form-control">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">End Date (Range)</label>
+                        <input type="date" name="duty_end_date" id="editRosterEndDate" class="form-control">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Status Label</label>
+                    <select name="status" id="editRosterStatus" class="form-select">
+                        <option value="upcoming">Upcoming</option>
+                        <option value="running">Running</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label small fw-semibold">Notes</label>
+                    <input type="text" name="items_note" id="editRosterNote" class="form-control">
+                </div>
             </div>
             <div class="modal-footer"><button type="submit" class="btn btn-dark fw-semibold">Save Duty</button></div>
         </form>

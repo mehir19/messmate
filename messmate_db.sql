@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 22, 2026 at 04:58 PM
+-- Generation Time: Nov 23, 2026 at 10:20 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -100,7 +100,9 @@ INSERT INTO `deposits` (`id`, `mess_id`, `user_id`, `amount`, `entry_type`, `not
 (28, 1, 14, -700.00, 'correction', 'Fixed Deposit #27 (Current ৳700.00 -> New ৳0.00, Diff ৳-700.00): wrong entry', 1, '2026-11', '2026-11-22 15:19:10'),
 (29, 1, 16, 700.00, 'deposit', 'Monthly fund contribution', 1, '2026-11', '2026-11-22 15:22:23'),
 (30, 1, 1, 700.00, 'deposit', 'Monthly fund contribution', 1, '2026-11', '2026-11-22 15:52:58'),
-(31, 1, 16, 300.00, 'deposit', 'Monthly fund contribution', 1, '2026-11', '2026-11-22 15:54:03');
+(31, 1, 16, 300.00, 'deposit', 'Monthly fund contribution', 1, '2026-11', '2026-11-22 15:54:03'),
+(32, 1, 17, 2200.00, 'deposit', 'Monthly fund contribution', 1, '2026-11', '2026-11-23 04:35:49'),
+(33, 1, 14, 1600.00, 'deposit', 'Monthly fund contribution', 1, '2026-11', '2026-11-23 04:36:29');
 
 -- --------------------------------------------------------
 
@@ -132,7 +134,11 @@ INSERT INTO `expenses` (`id`, `mess_id`, `paid_by_user_id`, `funding_source`, `c
 (5, 1, 13, 'member_pocket', 'grocery', 'Grocery', 3000.00, '2026-11-21', 'approved', '2026-11', '2026-11-21 09:43:58'),
 (6, 2, 9, 'manager_cash', 'misc', 'House Rent', 600.00, '2026-11-22', 'approved', '2026-11', '2026-11-22 14:25:56'),
 (7, 1, 1, 'manager_cash', 'grocery', 'Shopping', 3800.00, '2026-11-22', 'approved', '2026-11', '2026-11-22 15:03:07'),
-(8, 1, 14, 'member_pocket', 'grocery', 'Oil + Salt + Rice', 700.00, '2026-11-22', 'approved', '2026-11', '2026-11-22 15:20:05');
+(8, 1, 14, 'member_pocket', 'grocery', 'Oil + Salt + Rice', 700.00, '2026-11-22', 'approved', '2026-11', '2026-11-22 15:20:05'),
+(10, 1, 14, 'member_pocket', 'grocery', 'Grocery', 800.00, '2026-11-23', 'approved', '2026-11', '2026-11-23 04:35:16'),
+(11, 1, 1, 'manager_cash', 'grocery', 'Grocery', 3000.00, '2026-11-23', 'approved', '2026-11', '2026-11-23 04:36:59'),
+(12, 1, 17, 'member_pocket', 'grocery', 'Oil', 200.00, '2026-11-23', 'approved', '2026-11', '2026-11-23 04:37:51'),
+(13, 1, 1, 'member_pocket', 'misc', 'Cooker Salary', 3600.00, '2026-11-23', 'approved', '2026-11', '2026-11-23 04:39:22');
 
 -- --------------------------------------------------------
 
@@ -201,16 +207,20 @@ CREATE TABLE `shopping_roster` (
   `mess_id` int(11) NOT NULL,
   `assigned_user_id` int(11) NOT NULL,
   `duty_date` date NOT NULL,
+  `duty_end_date` date DEFAULT NULL,
   `items_note` varchar(255) DEFAULT NULL,
-  `status` enum('upcoming','completed') DEFAULT 'upcoming'
+  `status` enum('upcoming','running','completed') NOT NULL DEFAULT 'upcoming'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `shopping_roster`
 --
 
-INSERT INTO `shopping_roster` (`id`, `mess_id`, `assigned_user_id`, `duty_date`, `items_note`, `status`) VALUES
-(1, 1, 1, '2026-11-21', '', 'upcoming');
+INSERT INTO `shopping_roster` (`id`, `mess_id`, `assigned_user_id`, `duty_date`, `duty_end_date`, `items_note`, `status`) VALUES
+(1, 1, 1, '2026-11-21', NULL, '', 'completed'),
+(2, 1, 13, '2026-11-23', '2026-11-27', '', 'running'),
+(3, 1, 14, '2026-11-30', '2026-11-30', '', 'upcoming'),
+(4, 1, 15, '2026-11-26', '2026-11-26', '', 'upcoming');
 
 -- --------------------------------------------------------
 
@@ -320,13 +330,13 @@ ALTER TABLE `chat_messages`
 -- AUTO_INCREMENT for table `deposits`
 --
 ALTER TABLE `deposits`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `expenses`
 --
 ALTER TABLE `expenses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `meals`
@@ -344,7 +354,7 @@ ALTER TABLE `messes`
 -- AUTO_INCREMENT for table `shopping_roster`
 --
 ALTER TABLE `shopping_roster`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `users`

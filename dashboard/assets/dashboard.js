@@ -89,11 +89,60 @@ function openEditExpense(expId, desc, amount, paidBy, fundingMode) {
     new bootstrap.Modal(document.getElementById('modalEditExpense')).show();
 }
 
-function openEditRoster(rosterId, uid, dutyDate, note) {
+const ROSTER_BADGE_CLASSES = {
+    upcoming: 'badge roster-status-badge bg-warning text-dark',
+    running: 'badge roster-status-badge bg-primary text-white',
+    completed: 'badge roster-status-badge bg-success text-white',
+};
+
+function toggleRosterStatusAjax(formEl) {
+    const btn = formEl.querySelector('.roster-toggle-btn');
+    const rosterIdInput = formEl.querySelector('input[name="roster_id"]');
+    if (!rosterIdInput || !window.fetch) return true;
+
+    const formData = new FormData(formEl);
+    formData.set('ajax', '1');
+
+    if (btn) btn.disabled = true;
+
+    fetch(window.location.href, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData,
+    })
+        .then(function (res) {
+            if (!res.ok) throw new Error('Request failed');
+            return res.json();
+        })
+        .then(function (data) {
+            if (!data || !data.ok) throw new Error(data?.error || 'Invalid response');
+            const row = document.querySelector('tr[data-roster-row="' + data.roster_id + '"]');
+            const badge = row ? row.querySelector('.roster-status-badge') : null;
+            if (badge) {
+                badge.dataset.status = data.status;
+                badge.className = ROSTER_BADGE_CLASSES[data.status] || ROSTER_BADGE_CLASSES.upcoming;
+                badge.textContent = data.label;
+            }
+        })
+        .catch(function () {
+            formEl.submit();
+        })
+        .finally(function () {
+            if (btn) btn.disabled = false;
+        });
+
+    return false;
+}
+
+function openEditRoster(rosterId, uid, dutyDate, dutyEndDate, note, status) {
     document.getElementById('editRosterId').value = rosterId;
     document.getElementById('editRosterUid').value = uid;
     document.getElementById('editRosterDate').value = dutyDate;
-    document.getElementById('editRosterNote').value = note;
+    const endEl = document.getElementById('editRosterEndDate');
+    if (endEl) endEl.value = dutyEndDate || dutyDate;
+    document.getElementById('editRosterNote').value = note || '';
+    const statusEl = document.getElementById('editRosterStatus');
+    if (statusEl) statusEl.value = status || 'upcoming';
     new bootstrap.Modal(document.getElementById('modalEditRoster')).show();
 }
 

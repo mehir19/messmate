@@ -42,12 +42,22 @@ $cur = (string)($mess['currency_symbol'] ?? 'BDT');
 function getMonthSummary(PDO $pdo, int $messId, string $month, array $members): array {
     $memberCount = max(1, count($members));
 
+    // Manager's carried-forward previous balance (if any)
+    $managerPrevBal = 0.0;
+    foreach ($members as $m) {
+        if (($m['role'] ?? '') === 'manager') {
+            $managerPrevBal += (float)($m['previous_balance'] ?? 0.0);
+        }
+    }
+
     // Approved Expenses
-    // Grocery from manager_cash goes into total_grocery (and thus meal cost & cash held),
-    // while only member_pocket grocery adds to an individual member's Own Grocery reimbursement.
+    // total_grocery includes both manager_cash and member_pocket grocery (for Cost Per Meal).
+    // member_pocket grocery also counts as member own-shopping credit in Funds.
     $expStmt = $pdo->prepare("SELECT * FROM expenses WHERE mess_id = ? AND billing_month = ? AND status = 'approved'");
     $expStmt->execute([$messId, $month]);
     $totalGrocery = 0.0;
+    $managerCashGrocery = 0.0;
+    $memberPocketGroceryTotal = 0.0;
     $totalMisc = 0.0;
     $personalGrocery = [];
     foreach ($expStmt->fetchAll() as $ex) {
@@ -56,8 +66,11 @@ function getMonthSummary(PDO $pdo, int $messId, string $month, array $members): 
         if ($ex['category'] === 'grocery') {
             $totalGrocery += $amt;
             if ($source === 'member_pocket') {
+                $memberPocketGroceryTotal += $amt;
                 $payerId = (int)$ex['paid_by_user_id'];
                 $personalGrocery[$payerId] = ($personalGrocery[$payerId] ?? 0.0) + $amt;
+            } else {
+                $managerCashGrocery += $amt;
             }
         } else {
             $totalMisc += $amt;
@@ -108,15 +121,23 @@ function getMonthSummary(PDO $pdo, int $messId, string $month, array $members): 
         ];
     }
 
+    // Total Funds = Deposits + Member Own Shopping (+ Manager Prev. Balance if carried forward)
+    $totalFunds = $totalDeposits + $memberPocketGroceryTotal + $managerPrevBal;
+    $totalExpenses = $totalGrocery + $totalMisc;
+
     return [
-        'total_deposits'  => $totalDeposits,
-        'total_grocery'   => $totalGrocery,
-        'total_misc'      => $totalMisc,
-        'total_meals'     => $totalMeals,
-        'cost_per_meal'   => $costPerMeal,
-        'misc_per_member' => $miscPerMember,
-        'cash_held'       => $totalDeposits - ($totalGrocery + $totalMisc),
-        'members'         => $perMember,
+        'manager_prev_balance'        => $managerPrevBal,
+        'total_deposits'              => $totalDeposits,
+        'total_funds'                 => $totalFunds,
+        'total_grocery'               => $totalGrocery,
+        'manager_cash_grocery'        => $managerCashGrocery,
+        'member_pocket_grocery_total' => $memberPocketGroceryTotal,
+        'total_misc'                  => $totalMisc,
+        'total_meals'                 => $totalMeals,
+        'cost_per_meal'               => $costPerMeal,
+        'misc_per_member'             => $miscPerMember,
+        'cash_held'                   => $totalFunds - $totalExpenses,
+        'members'                     => $perMember,
     ];
 }
 
@@ -392,22 +413,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // --- SHOPPING ROSTER CRUD ---
+    // --- SHOPPING ROSTER CRUD ---
     if ($action === 'add_roster' && $role === 'manager' && $subInfo['active']) {
         $assignedUid = (int)$_POST['assigned_user_id'];
-        $dutyDate    = $_POST['duty_date'];
+        $dutyDate    = $_POST['duty_date'] ?: $today;
+        $dutyEndDate = trim($_POST['duty_end_date'] ?? '');
+        if ($dutyEndDate !== '' && $dutyEndDate < $dutyDate) {
+            $dutyEndDate = $dutyDate;
+        }
         $itemsNote   = trim($_POST['items_note']);
-        $ins = $pdo->prepare("INSERT INTO shopping_roster (mess_id, assigned_user_id, duty_date, items_note, status) VALUES (?, ?, ?, ?, 'upcoming')");
-        $ins->execute([$messId, $assignedUid, $dutyDate, $itemsNote]);
+
+        $ins = $pdo->prepare("
+            INSERT INTO shopping_roster (mess_id, assigned_user_id, duty_date, duty_end_date, items_note, status)
+            VALUES (?, ?, ?, ?, ?, 'upcoming')
+        ");
+        $ins->execute([$messId, $assignedUid, $dutyDate, $dutyEndDate !== '' ? $dutyEndDate : null, $itemsNote]);
         $flash = "Shopping duty assigned.";
     }
 
     if ($action === 'edit_roster' && $role === 'manager' && $subInfo['active']) {
         $rosterId    = (int)$_POST['roster_id'];
         $assignedUid = (int)$_POST['assigned_user_id'];
-        $dutyDate    = $_POST['duty_date'];
+        $dutyDate    = $_POST['duty_date'] ?: $today;
+        $dutyEndDate = trim($_POST['duty_end_date'] ?? '');
+        if ($dutyEndDate !== '' && $dutyEndDate < $dutyDate) {
+            $dutyEndDate = $dutyDate;
+        }
         $itemsNote   = trim($_POST['items_note']);
-        $upd = $pdo->prepare("UPDATE shopping_roster SET assigned_user_id = ?, duty_date = ?, items_note = ? WHERE id = ? AND mess_id = ?");
-        $upd->execute([$assignedUid, $dutyDate, $itemsNote, $rosterId, $messId]);
+        $status      = in_array($_POST['status'] ?? '', ['upcoming', 'running', 'completed'], true)
+            ? $_POST['status']
+            : 'upcoming';
+
+        $upd = $pdo->prepare("
+            UPDATE shopping_roster
+            SET assigned_user_id = ?, duty_date = ?, duty_end_date = ?, items_note = ?, status = ?
+            WHERE id = ? AND mess_id = ?
+        ");
+        $upd->execute([$assignedUid, $dutyDate, $dutyEndDate !== '' ? $dutyEndDate : null, $itemsNote, $status, $rosterId, $messId]);
         $flash = "Shopping duty updated.";
     }
 
@@ -418,11 +460,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flash = "Shopping duty removed.";
     }
 
-    if ($action === 'toggle_roster' && $role === 'manager') {
+    if ($action === 'cycle_roster_status' && $role === 'manager') {
         $rosterId = (int)$_POST['roster_id'];
-        $upd = $pdo->prepare("UPDATE shopping_roster SET status = IF(status='upcoming','completed','upcoming') WHERE id = ? AND mess_id = ?");
-        $upd->execute([$rosterId, $messId]);
-        $flash = "Shopping duty status toggled.";
+        $isAjax   = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || (isset($_POST['ajax']) && $_POST['ajax'] === '1');
+
+        if (!$subInfo['active']) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                http_response_code(403);
+                echo json_encode(['ok' => false, 'error' => 'Subscription is inactive.']);
+                exit;
+            }
+            $flashError = "Subscription is inactive.";
+        } else {
+            $curStmt = $pdo->prepare("SELECT status FROM shopping_roster WHERE id = ? AND mess_id = ?");
+            $curStmt->execute([$rosterId, $messId]);
+            $row = $curStmt->fetch();
+
+            if ($row) {
+                $order = ['upcoming', 'running', 'completed'];
+                $idx = array_search($row['status'], $order, true);
+                $nextStatus = $order[(($idx === false ? -1 : $idx) + 1) % count($order)];
+
+                $upd = $pdo->prepare("UPDATE shopping_roster SET status = ? WHERE id = ? AND mess_id = ?");
+                $upd->execute([$nextStatus, $rosterId, $messId]);
+
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'ok'        => true,
+                        'roster_id' => $rosterId,
+                        'status'    => $nextStatus,
+                        'label'     => ucfirst($nextStatus),
+                    ]);
+                    exit;
+                }
+                $flash = "Shopping duty status set to " . ucfirst($nextStatus) . ".";
+            } elseif ($isAjax) {
+                header('Content-Type: application/json');
+                http_response_code(404);
+                echo json_encode(['ok' => false, 'error' => 'Roster entry not found.']);
+                exit;
+            }
+        }
     }
 
     // --- CARRY FORWARD PREVIOUS MONTH BALANCES ---
@@ -653,8 +734,10 @@ $unreadActionRequests = array_filter(
 $totalNotifications = count($pendingExpenses) + count($unreadActionRequests);
 
 // Sub-labels for Top KPI Cards
-$cashFormulaSub = "Funds - (Grocery + Misc)";
-$miscSplitSub   = fmtMoney($cur, $currSummary['misc_per_member']) . " / member (" . count($members) . ")";
+$fundsFormulaSub = fmtMoney($cur, $currSummary['total_deposits']) . " Dep + " . fmtMoney($cur, $currSummary['member_pocket_grocery_total']) . " Own Shop"
+    . ($currSummary['manager_prev_balance'] != 0 ? " + " . fmtMoney($cur, $currSummary['manager_prev_balance']) . " Mgr Prev" : "");
+$cashFormulaSub  = "Funds - (Grocery + Misc)";
+$miscSplitSub    = fmtMoney($cur, $currSummary['misc_per_member']) . " / member (" . count($members) . ")";
 
 // Column Totals
 $sumPrevBal  = 0.0;

@@ -63,7 +63,7 @@
                             <?= ($d['prev'] > 0 ? '+' : '') . number_format($d['prev'], 2) ?>
                         </td>
 
-                        <td class="text-end fw-semibold">
+                        <td class="text-end">
                             <?= number_format($d['deposit'], 2) ?>
                         </td>
                         <td class="text-end" style="color:#b45309;"><?= number_format($d['grocery'], 2) ?></td>

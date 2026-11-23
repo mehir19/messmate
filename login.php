@@ -97,11 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
                                     <label class="form-label small fw-semibold text-uppercase text-secondary">Mess Code</label>
-                                    <input type="text" name="mess_code" class="form-control text-uppercase" required placeholder="MESS-4821">
+                                    <input type="text" name="mess_code" class="form-control" required placeholder="MESS-4821">
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small fw-semibold text-uppercase text-secondary">Member ID</label>
-                                    <input type="text" name="member_code" class="form-control text-uppercase" required placeholder="M-102">
+                                    <input type="text" name="member_code" class="form-control" required placeholder="M-102">
                                 </div>
                             </div>
                             <div class="mb-4">

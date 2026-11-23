@@ -1,11 +1,16 @@
-<?php if ($role === 'member' && isset($currSummary['members'][$currentUid])):
+<?php if (in_array($role, ['member', 'manager'], true) && isset($currSummary['members'][$currentUid], $currentUserRecord)):
     $my = $currSummary['members'][$currentUid];
 ?>
 <div class="card border-2 border-success rounded-4 p-4 mb-4 bg-white shadow-sm">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div>
-            <span class="badge bg-success-subtle text-success px-3 py-2 mb-1">MY PERSONAL ACCOUNT (<?= e($billingMonth) ?>)</span>
+            <span class="badge bg-success-subtle text-success px-3 py-2 mb-1">
+                MY PERSONAL ACCOUNT (<?= e($billingMonth) ?>)<?= $role === 'manager' ? ' • MANAGER' : '' ?>
+            </span>
             <h6 class="fw-bold mt-2 mb-0"><?= e($currentUserRecord['full_name']) ?> <span class="text-muted fs-6">(<?= e($currentUserRecord['member_code']) ?>)</span></h6>
+            <?php if ($role === 'manager'): ?>
+                <div class="small text-muted mt-1">Personal ledger figures only — separate from mess-wide funds and cash held.</div>
+            <?php endif; ?>
         </div>
         <div class="text-end">
             <div class="small text-muted fw-semibold text-uppercase">My Net Balance</div>
@@ -54,43 +59,3 @@
     </div>
 </div>
 <?php endif; ?>
-
-<div class="row g-3 mb-4">
-    <div class="col-6 col-lg">
-        <div class="card-clean p-4 h-100" >
-            <div class="kpi-label text-success">Total Funds Collected</div>
-            <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_deposits'])) ?></div>
-            <div class="small text-muted mt-1">Member deposits this month</div>
-        </div>
-    </div>
-    <div class="col-6 col-lg">
-        <div class="card-clean p-4 h-100">
-            <div class="kpi-label" style="color:#b45309;">Grocery Expenditure</div>
-            <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_grocery'])) ?></div>
-            <div class="small text-muted mt-1">Approved bazar &amp; food items</div>
-        </div>
-    </div>
-    <div class="col-6 col-lg">
-        <div class="card-clean p-4 h-100">
-            <div class="kpi-label text-primary">Misc &amp; Fixed Bills</div>
-            <div class="kpi-value text-dark"><?= e(fmtMoney($cur, $currSummary['total_misc'])) ?></div>
-            <div class="small text-muted mt-1"><?= e($miscSplitSub) ?></div>
-        </div>
-    </div>
-    <div class="col-6 col-lg">
-        <div class="card-clean p-4 h-100" >
-            <div class="kpi-label" style="color:<?= $currSummary['cash_held'] >= 0 ? '#0f766e' : '#b91c1c' ?>;">Cash With Manager</div>
-            <div class="kpi-value <?= $currSummary['cash_held'] >= 0 ? 'text-success' : 'text-danger' ?>">
-                <?= e(fmtMoney($cur, $currSummary['cash_held'])) ?>
-            </div>
-            <div class="small text-muted mt-1"><?= e($cashFormulaSub) ?></div>
-        </div>
-    </div>
-    <div class="col-12 col-lg">
-        <div class="card border-0 rounded-4 p-4 h-100 text-white" style="background:#0f172a;">
-            <div class="kpi-label" style="color: #34d399">Live Cost Per Meal</div>
-            <div class="kpi-value"><?= e(fmtMoney($cur, $currSummary['cost_per_meal'])) ?></div>
-            <div class="small text-white-50 mt-1">Total Meals: <?= number_format($currSummary['total_meals'], 1) ?></div>
-        </div>
-    </div>
-</div>
