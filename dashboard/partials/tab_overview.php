@@ -122,9 +122,12 @@
     </div>
 
     <div class="card-clean card-history p-4">
-        <div class="mb-3">
-            <h6 class="fw-bold mb-0">Deposit History &amp; Repeat-Safe Balance Correction Ledger</h6>
-            <small class="text-muted">Click <strong>Fix</strong> next to any deposit to see its current effective total and adjust safely multiple times.</small>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div>
+                <h6 class="fw-bold mb-0">Deposit History &amp; Repeat-Safe Balance Correction Ledger</h6>
+                <small class="text-muted">Click <strong>Fix</strong> next to any deposit to see its current effective total and adjust safely multiple times.</small>
+            </div>
+            <span class="badge bg-light text-dark border">Total Entries: <?= $totalDepRows ?></span>
         </div>
         <div class="table-responsive">
             <table class="table align-middle mb-0">
@@ -139,14 +142,20 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($allDeposits as $dp):
+                    <?php if (empty($pagedDeposits)): ?>
+                        <tr>
+                            <td colspan="<?= $role === 'manager' ? 6 : 5 ?>" class="text-center text-muted py-4">
+                                No deposits recorded for <?= e($billingMonth) ?> yet.
+                            </td>
+                        </tr>
+                    <?php else: foreach ($pagedDeposits as $dp):
                         $isCorr = $dp['entry_type'] === 'correction';
                         $origAmt = (float)$dp['amount'];
                         $adjAmt = $correctionsByDeposit[(int)$dp['id']] ?? 0.0;
                         $currEffAmt = $origAmt + $adjAmt;
                     ?>
                     <tr class="<?= $isCorr ? 'table-warning' : '' ?>">
-                        <td class="text-muted small"><?= date('M d, H:i', strtotime($dp['created_at'])) ?></td>
+                        <td class="text-muted small text-nowrap"><?= date('M d, H:i', strtotime($dp['created_at'])) ?></td>
                         <td class="fw-semibold"><?= e($dp['full_name']) ?> <span class="text-muted">(<?= e($dp['member_code']) ?>)</span></td>
                         <td>
                             <span class="badge <?= $isCorr ? 'bg-warning text-dark' : 'bg-success-subtle text-success' ?>">
@@ -173,9 +182,32 @@
                         </td>
                         <?php endif; ?>
                     </tr>
-                    <?php endforeach; ?>
+                    <?php endforeach; endif; ?>
                 </tbody>
             </table>
         </div>
+
+        <?php if ($totalDepPages > 1): ?>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 pt-2 border-top small">
+            <span class="text-muted">
+                Showing <?= $depOffset + 1 ?>–<?= min($totalDepRows, $depOffset + $depPerPage) ?> of <?= $totalDepRows ?> entries
+            </span>
+            <nav aria-label="Deposit history pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item <?= $depPage <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?month=<?= urlencode($billingMonth) ?>&tab=overview&dep_page=<?= max(1, $depPage - 1) ?>">Prev</a>
+                    </li>
+                    <?php for ($p = 1; $p <= $totalDepPages; $p++): ?>
+                        <li class="page-item <?= $p === $depPage ? 'active' : '' ?>">
+                            <a class="page-link" href="?month=<?= urlencode($billingMonth) ?>&tab=overview&dep_page=<?= $p ?>"><?= $p ?></a>
+                        </li>
+                    <?php endfor; ?>
+                    <li class="page-item <?= $depPage >= $totalDepPages ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?month=<?= urlencode($billingMonth) ?>&tab=overview&dep_page=<?= min($totalDepPages, $depPage + 1) ?>">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
 </div>

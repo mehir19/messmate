@@ -51,8 +51,6 @@ function getMonthSummary(PDO $pdo, int $messId, string $month, array $members): 
     }
 
     // Approved Expenses
-    // total_grocery includes both manager_cash and member_pocket grocery (for Cost Per Meal).
-    // member_pocket grocery also counts as member own-shopping credit in Funds.
     $expStmt = $pdo->prepare("SELECT * FROM expenses WHERE mess_id = ? AND billing_month = ? AND status = 'approved'");
     $expStmt->execute([$messId, $month]);
     $totalGrocery = 0.0;
@@ -121,7 +119,6 @@ function getMonthSummary(PDO $pdo, int $messId, string $month, array $members): 
         ];
     }
 
-    // Total Funds = Deposits + Member Own Shopping (+ Manager Prev. Balance if carried forward)
     $totalFunds = $totalDeposits + $memberPocketGroceryTotal + $managerPrevBal;
     $totalExpenses = $totalGrocery + $totalMisc;
 
@@ -414,7 +411,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // --- SHOPPING ROSTER CRUD ---
-    // --- SHOPPING ROSTER CRUD ---
     if ($action === 'add_roster' && $role === 'manager' && $subInfo['active']) {
         $assignedUid = (int)$_POST['assigned_user_id'];
         $dutyDate    = $_POST['duty_date'] ?: $today;
@@ -671,7 +667,7 @@ $groceryLogs = array_filter($allExpenses, fn($e) => $e['category'] === 'grocery'
 $miscLogs    = array_filter($allExpenses, fn($e) => $e['category'] === 'misc');
 $pendingExpenses = array_filter($allExpenses, fn($e) => $e['status'] === 'pending');
 
-// Deposits List + Repeat-Safe Effective Amount Map
+// Deposits List + Repeat-Safe Effective Amount Map + Pagination
 $depStmt = $pdo->prepare("
     SELECT d.*, u.full_name, u.member_code
     FROM deposits d JOIN users u ON d.user_id = u.id
@@ -688,6 +684,13 @@ foreach ($allDeposits as $dp) {
         $correctionsByDeposit[$parentId] = ($correctionsByDeposit[$parentId] ?? 0.0) + (float)$dp['amount'];
     }
 }
+
+$depPerPage    = 6;
+$totalDepRows  = count($allDeposits);
+$totalDepPages = max(1, (int)ceil($totalDepRows / $depPerPage));
+$depPage       = max(1, min($totalDepPages, (int)($_GET['dep_page'] ?? 1)));
+$depOffset     = ($depPage - 1) * $depPerPage;
+$pagedDeposits = array_slice($allDeposits, $depOffset, $depPerPage);
 
 // Selected Date Meals
 $selectedMealDate = $_GET['meal_date'] ?? $today;
@@ -813,37 +816,6 @@ if (!is_file($dailyBackupFile)) {
         <?php endif; ?>
 
         <?php require __DIR__ . '/dashboard/partials/kpi_cards.php'; ?>
-
-        <ul class="nav nav-tabs nav-tabs-clean rounded  mb-4" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link <?= $activeTab === 'overview' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabOverview" type="button">
-                    <i class="bi bi-table me-1"></i> Overview &amp; Ledger
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link <?= $activeTab === 'meals' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabMeals" type="button">
-                    <i class="bi bi-egg-fried me-1"></i> Daily &amp; Full Month Meals
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link <?= $activeTab === 'expenses' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabExpenses" type="button">
-                    <i class="bi bi-cart4 me-1"></i> Grocery &amp; Misc Bills
-                    <?php if (count($pendingExpenses) > 0): ?>
-                        <span class="badge bg-danger ms-1"><?= count($pendingExpenses) ?></span>
-                    <?php endif; ?>
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link <?= $activeTab === 'roster' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabRoster" type="button">
-                    <i class="bi bi-calendar-check me-1"></i> Shopping Roster
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link <?= $activeTab === 'prevmonth' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tabPrevMonth" type="button">
-                    <i class="bi bi-clock-history me-1"></i> Previous Month (<?= e($prevMonth) ?>)
-                </button>
-            </li>
-        </ul>
 
         <div class="tab-content">
             <?php require __DIR__ . '/dashboard/partials/tab_overview.php'; ?>

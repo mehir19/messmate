@@ -151,6 +151,22 @@ button, .btn {
     min-width: 155px;
 }
 
+.mm-sidebar-nav .nav-link {
+    color: #334155;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.mm-sidebar-nav .nav-link:hover {
+    background-color: #f1f5f9;
+    color: #0f172a;
+}
+
+.mm-sidebar-nav .nav-link.active {
+    background-color: #198754;
+    color: #ffffff;
+}
+
 @media (min-width: 992px) {
     .mm-sidebar {
         position: fixed;

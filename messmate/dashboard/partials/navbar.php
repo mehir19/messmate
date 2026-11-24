@@ -25,7 +25,7 @@
                 <input type="month" name="month" value="<?= e($billingMonth) ?>" onchange="this.form.submit()" class="form-control form-control-sm fw-semibold">
             </form>
 
-            <button class="btn btn-outline-secondary btn-sm position-relative fw-semibold py-1.5 px-2.5" type="button" data-bs-toggle="offcanvas" data-bs-target="#drawerNotify">
+            <button class="btn btn-outline-secondary btn-sm position-relative fw-semibold py-2 px-2.5" type="button" data-bs-toggle="offcanvas" data-bs-target="#drawerNotify">
                 <i class="bi bi-bell-fill"></i> Chat &amp; Approvals
                 <?php if ($totalNotifications > 0): ?>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
@@ -35,20 +35,20 @@
             </button>
 
             <?php if ($role === 'manager'): ?>
-                <button class="btn btn-outline-dark btn-sm fw-semibold py-1.5" data-bs-toggle="modal" data-bs-target="#modalMessProfile">
+                <button class="btn btn-outline-dark btn-sm fw-semibold py-2" data-bs-toggle="modal" data-bs-target="#modalMessProfile">
                     <i class="bi bi-gear-fill"></i> Mess Profile
                 </button>
-                <button class="btn btn-outline-warning text-dark btn-sm fw-semibold py-1.5" data-bs-toggle="modal" data-bs-target="#modalSub">
+                <button class="btn btn-outline-warning text-dark btn-sm fw-semibold py-2" data-bs-toggle="modal" data-bs-target="#modalSub">
                     <i class="bi bi-star-fill text-warning"></i> Plan
                 </button>
-                <button class="btn btn-success btn-sm fw-semibold py-1.5" data-bs-toggle="modal" data-bs-target="#modalDeposit">
+                <button class="btn btn-success btn-sm fw-semibold py-2" data-bs-toggle="modal" data-bs-target="#modalDeposit">
                     <i class="bi bi-plus-lg"></i> Deposit
                 </button>
-                <button class="btn btn-dark btn-sm fw-semibold py-1.5" data-bs-toggle="modal" data-bs-target="#modalMember">
+                <button class="btn btn-dark btn-sm fw-semibold py-2" data-bs-toggle="modal" data-bs-target="#modalMember">
                     <i class="bi bi-person-plus-fill"></i> Member
                 </button>
             <?php endif; ?>
-            <a href="logout.php" class="btn btn-light border btn-sm text-secondary fw-semibold py-1.5">Logout</a>
+            <a href="logout.php" class="btn btn-light border btn-sm text-secondary fw-semibold py-2">Logout</a>
         </div>
     </div>
 </nav>

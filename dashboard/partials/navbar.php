@@ -1,14 +1,14 @@
 <!-- Mobile Top Header (visible below lg) -->
 <div class="d-lg-none bg-white border-bottom sticky-top px-3 py-2 d-flex justify-content-between align-items-center">
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex align-items-center gap-2 min-w-0">
         <?php if (!empty($mess['mess_logo'])): ?>
             <img src="<?= e($mess['mess_logo']) ?>" alt="<?= e($mess['mess_name']) ?> icon"
-                 class="rounded-3 border object-fit-cover" style="width:36px;height:36px;">
+                 class="rounded-3 border object-fit-cover flex-shrink-0" style="width:36px;height:36px;">
         <?php else: ?>
-            <div class="bg-success text-white rounded-3 d-flex align-items-center justify-content-center fw-bold" style="width:36px;height:36px;">M</div>
+            <div class="bg-success text-white rounded-3 d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:36px;height:36px;">M</div>
         <?php endif; ?>
-        <div>
-            <div class="fw-bold text-dark small lh-1"><?= e($mess['mess_name']) ?></div>
+        <div class="text-truncate">
+            <div class="fw-bold text-dark small lh-1 text-truncate"><?= e($mess['mess_name']) ?></div>
             <span class="text-muted font-monospace" style="font-size:0.72rem;"><?= e($mess['mess_code']) ?></span>
         </div>
     </div>
@@ -20,7 +20,7 @@
 <!-- Desktop Left Vertical Sidebar + Mobile Offcanvas -->
 <aside class="mm-sidebar offcanvas-lg offcanvas-start bg-white border-end" tabindex="-1" id="mobileSidebar">
     <div class="offcanvas-header border-bottom d-lg-none">
-        <h6 class="offcanvas-title fw-bold"><?= e($mess['mess_name']) ?></h6>
+        <h6 class="offcanvas-title fw-bold mb-0"><?= e($mess['mess_name']) ?></h6>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#mobileSidebar"></button>
     </div>
 
@@ -44,44 +44,48 @@
             </div>
 
             <div class="small text-muted mb-3 px-1">
-                <div>User: <strong><?= e($currentUserRecord['full_name'] ?? '') ?></strong> (<span class="text-success text-uppercase fw-bold"><?= e($role) ?></span>)</div>
-                <div class="<?= $subInfo['active'] ? 'text-success' : 'text-danger fw-bold' ?>">
+                <div>
+                    Signed In: <strong><?= e($currentUserRecord['full_name'] ?? '') ?></strong>
+                    <?php if (!empty($currentUserRecord['member_code'])): ?>
+                        <span class="badge bg-success-subtle text-success font-monospace"><?= e($currentUserRecord['member_code']) ?></span>
+                    <?php endif; ?>
+                </div>
+                <div class="<?= $subInfo['active'] ? 'text-success' : 'text-danger fw-bold' ?> mt-0.5">
                     <i class="bi bi-shield-check me-1"></i><?= e($subInfo['label']) ?>
                 </div>
             </div>
 
-            <!-- Billing Month Selector -->
-            <div class="mb-3">
-                <label class="form-label small fw-bold text-uppercase text-muted mb-1" style="font-size:0.7rem;">Billing Month</label>
-                <form method="GET">
-                    <input type="hidden" name="tab" value="<?= e($activeTab) ?>">
-                    <input type="month" name="month" value="<?= e($billingMonth) ?>" onchange="this.form.submit()" class="form-control form-control-sm fw-semibold">
-                </form>
-            </div>
-
-            <!-- Primary Actions -->
-            <div class="d-grid gap-2 mb-3">
-                <button class="btn btn-outline-secondary btn-sm text-start d-flex justify-content-between align-items-center fw-semibold py-2"
-                        type="button" data-bs-toggle="offcanvas" data-bs-target="#drawerNotify">
-                    <span><i class="bi bi-bell-fill me-2 text-primary"></i>Chat &amp; Approvals</span>
-                    <?php if ($totalNotifications > 0): ?>
-                        <span class="badge rounded-pill bg-danger"><?= $totalNotifications ?></span>
+            <!-- Navigation Tabs in Left Sidebar -->
+            <div class="small fw-bold text-uppercase text-muted mb-2 px-1" style="font-size:0.7rem;">Navigation</div>
+            <div class="nav flex-column nav-pills mm-sidebar-nav gap-1 mb-3" role="tablist">
+                <button class="nav-link text-start py-2 px-3 rounded-3 d-flex align-items-center <?= $activeTab === 'overview' ? 'active' : '' ?>"
+                        data-bs-toggle="tab" data-bs-target="#tabOverview" type="button" role="tab">
+                    <i class="bi bi-table me-2"></i><span>Overview &amp; Ledger</span>
+                </button>
+                <button class="nav-link text-start py-2 px-3 rounded-3 d-flex align-items-center <?= $activeTab === 'meals' ? 'active' : '' ?>"
+                        data-bs-toggle="tab" data-bs-target="#tabMeals" type="button" role="tab">
+                    <i class="bi bi-egg-fried me-2"></i><span>Daily &amp; Full Meals</span>
+                </button>
+                <button class="nav-link text-start py-2 px-3 rounded-3 d-flex align-items-center <?= $activeTab === 'expenses' ? 'active' : '' ?>"
+                        data-bs-toggle="tab" data-bs-target="#tabExpenses" type="button" role="tab">
+                    <i class="bi bi-cart4 me-2"></i><span>Grocery &amp; Misc Bills</span>
+                    <?php if (count($pendingExpenses) > 0): ?>
+                        <span class="badge bg-danger ms-auto"><?= count($pendingExpenses) ?></span>
                     <?php endif; ?>
                 </button>
-
-                <?php if ($role === 'manager'): ?>
-                    <button class="btn btn-success btn-sm text-start fw-semibold py-2" data-bs-toggle="modal" data-bs-target="#modalDeposit">
-                        <i class="bi bi-plus-circle-fill me-2"></i>Record Deposit
-                    </button>
-                    <button class="btn btn-dark btn-sm text-start fw-semibold py-2" data-bs-toggle="modal" data-bs-target="#modalMember">
-                        <i class="bi bi-person-plus-fill me-2"></i>Add Member
-                    </button>
-                <?php endif; ?>
+                <button class="nav-link text-start py-2 px-3 rounded-3 d-flex align-items-center <?= $activeTab === 'roster' ? 'active' : '' ?>"
+                        data-bs-toggle="tab" data-bs-target="#tabRoster" type="button" role="tab">
+                    <i class="bi bi-calendar-check me-2"></i><span>Shopping Roster</span>
+                </button>
+                <button class="nav-link text-start py-2 px-3 rounded-3 d-flex align-items-center <?= $activeTab === 'prevmonth' ? 'active' : '' ?>"
+                        data-bs-toggle="tab" data-bs-target="#tabPrevMonth" type="button" role="tab">
+                    <i class="bi bi-clock-history me-2"></i><span>Prev. Month (<?= e($prevMonth) ?>)</span>
+                </button>
             </div>
 
             <!-- Backup & Settings -->
-            <div class="small fw-bold text-uppercase text-muted mb-1 px-1" style="font-size:0.7rem;">Reports &amp; Settings</div>
-            <div class="d-grid gap-1.5">
+            <div class="small fw-bold text-uppercase text-muted mb-2 px-1" style="font-size:0.7rem;">Reports &amp; Settings</div>
+            <div class="d-grid gap-2">
                 <a href="export_backup.php?month=<?= urlencode($billingMonth) ?>&auto_pdf=1"
                    target="_blank"
                    class="btn btn-outline-danger btn-sm text-start fw-semibold py-1.5">
@@ -110,3 +114,38 @@
         </div>
     </div>
 </aside>
+
+<!-- Top Right Utility Header (Main Workspace) -->
+<header class="mm-topbar bg-white border-bottom px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+        <span class="fw-bold text-dark"><?= e($mess['mess_name']) ?></span>
+        <span class="badge bg-light text-dark border font-monospace"><?= e($billingMonth) ?></span>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <form method="GET" class="d-flex align-items-center mb-0">
+            <input type="hidden" name="tab" value="<?= e($activeTab) ?>">
+            <input type="month" name="month" value="<?= e($billingMonth) ?>" onchange="this.form.submit()"
+                   class="form-control form-control-sm fw-semibold" style="width:155px;" title="Select Billing Month">
+        </form>
+
+        <button class="btn btn-outline-secondary btn-sm position-relative fw-semibold"
+                type="button" data-bs-toggle="offcanvas" data-bs-target="#drawerNotify">
+            <i class="bi bi-bell-fill"></i> <span class="d-none d-sm-inline">Chat &amp; Approvals</span>
+            <?php if ($totalNotifications > 0): ?>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    <?= $totalNotifications ?>
+                </span>
+            <?php endif; ?>
+        </button>
+
+        <?php if ($role === 'manager'): ?>
+            <button class="btn btn-success btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#modalDeposit">
+                <i class="bi bi-plus-lg"></i> Deposit
+            </button>
+            <button class="btn btn-dark btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#modalMember">
+                <i class="bi bi-person-plus-fill"></i> Member
+            </button>
+        <?php endif; ?>
+    </div>
+</header>

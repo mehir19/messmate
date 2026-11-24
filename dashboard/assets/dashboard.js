@@ -151,3 +151,37 @@ function toggleChatReqFields() {
     document.getElementById('mealReqFields').classList.toggle('d-none', mode !== 'meal_request');
     document.getElementById('amountReqFields').classList.toggle('d-none', mode !== 'amount_request');
 }
+
+function applyPersonalStatsVisibility(hidden) {
+    const card = document.getElementById('mmPersonalStatsCard');
+    const label = document.getElementById('togglePersonalStatsLabel');
+    const btn = document.getElementById('btnTogglePersonalStats');
+    if (!card || !label) return;
+
+    card.classList.toggle('d-none', hidden);
+    label.textContent = hidden ? 'Show My Stats' : 'Hide My Stats';
+    if (btn) {
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = hidden ? 'bi bi-eye me-1' : 'bi bi-eye-slash me-1';
+        }
+    }
+}
+
+function togglePersonalStatsCard() {
+    const card = document.getElementById('mmPersonalStatsCard');
+    if (!card) return;
+    const nextHidden = !card.classList.contains('d-none');
+    try {
+        localStorage.setItem('messmate_hide_personal_stats', nextHidden ? '1' : '0');
+    } catch (e) {}
+    applyPersonalStatsVisibility(nextHidden);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    try {
+        if (localStorage.getItem('messmate_hide_personal_stats') === '1') {
+            applyPersonalStatsVisibility(true);
+        }
+    } catch (e) {}
+});
