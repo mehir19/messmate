@@ -2,7 +2,7 @@
     $my = $currSummary['members'][$currentUid];
 ?>
 <div class="d-flex justify-content-between align-items-center mb-2">
-    <span class="small fw-bold text-uppercase text-muted">Toggle to Show Individual Account Summary</span>
+    <span class="small fw-bold text-uppercase text-muted">Individual Account Summary</span>
     <button type="button" id="btnTogglePersonalStats" class="btn btn-outline-success btn-sm py-1 px-2.5 fw-semibold" onclick="togglePersonalStatsCard()">
         <i class="bi bi-eye-slash me-1"></i> <span id="togglePersonalStatsLabel">Hide My Stats</span>
     </button>
