@@ -50,10 +50,13 @@
                     </div>
 
                     <p class="mb-1 mt-1"><?= e($c['message']) ?></p>
+                    <?php if (!empty($c['created_at'])): ?>
+                        <div class="small text-muted" style="font-size:0.72rem;"><?= fmtDateDmy($c['created_at'], true) ?></div>
+                    <?php endif; ?>
 
                     <?php if ($isMealReq && !empty($c['target_date'])): ?>
                         <div class="small text-primary fw-semibold">
-                            Date: <?= e($c['target_date']) ?> •
+                            Date: <?= fmtDateDmy($c['target_date']) ?> •
                             B: <?= number_format((float)($c['req_breakfast'] ?? 0), 1) ?> /
                             L: <?= number_format((float)($c['req_lunch'] ?? 0), 1) ?> /
                             D: <?= number_format((float)($c['req_dinner'] ?? 0), 1) ?>

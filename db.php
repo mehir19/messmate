@@ -1,4 +1,6 @@
 <?php
+date_default_timezone_set('Asia/Dhaka');
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -51,3 +53,16 @@ function fmtMoney(string $currencyCode, float $amount): string {
     $sym = $symbols[$currencyCode] ?? $currencyCode;
     return $sym . number_format($amount, 2);
 }
+
+function fmtDateDmy(?string $dateStr, bool $withTime = false, bool $shortYear = true): string {
+    if (empty($dateStr)) {
+        return '';
+    }
+    $ts = strtotime($dateStr);
+    if ($ts === false) {
+        return (string)$dateStr;
+    }
+    $dateFmt = $shortYear ? 'd-m-y' : 'd-m-Y';
+    return $withTime ? date($dateFmt . ' H:i', $ts) : date($dateFmt, $ts);
+}
+
