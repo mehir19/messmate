@@ -37,6 +37,7 @@ $stmt->execute([$messId]);
 $mess = $stmt->fetch();
 $subInfo = checkSubscriptionActive($mess);
 $cur = (string)($mess['currency_symbol'] ?? 'BDT');
+$targetMealCost = isset($mess['target_meal_cost']) ? (float)$mess['target_meal_cost'] : 60.0;
 
 // Helper to compute full monthly financial summary for any given YYYY-MM
 function getMonthSummary(PDO $pdo, int $messId, string $month, array $members): array {
@@ -148,6 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'update_mess_profile' && $role === 'manager' && $subInfo['active']) {
         $newMessName = trim($_POST['mess_name'] ?? '');
         $logoPath = $mess['mess_logo'] ?? null;
+        $targetMealCost = (float)($mess['target_meal_cost'] ?? 60.0);
 
         if (!empty($_FILES['mess_logo']['name']) && is_uploaded_file($_FILES['mess_logo']['tmp_name'])) {
             $file = $_FILES['mess_logo'];
@@ -166,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($file['size'] > 2 * 1024 * 1024) {
                 $flashError = "Mess image must be 2 MB or smaller.";
             } else {
-                $uploadDir = __DIR__ . '/dashboard/uploads/messes';
+                $uploadDir = __DIR__ . '/dashboard/uploads';
                 if (!is_dir($uploadDir)) {
                     mkdir($uploadDir, 0775, true);
                 }
@@ -181,22 +183,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             @unlink($oldFile);
                         }
                     }
-                    $logoPath = 'dashboard/uploads/messes/' . $filename;
+                    $logoPath = 'dashboard/uploads/' . $filename;
                 } else {
                     $flashError = "Could not save uploaded mess image.";
                 }
             }
         }
 
+        $rawTarget = $_POST['target_meal_cost'] ?? $targetMealCost;
+        $newTargetMealCost = is_numeric($rawTarget) ? max(0, (float)$rawTarget) : $targetMealCost;
+
         if ($flashError === '') {
             if ($newMessName === '') {
                 $flashError = "Mess name cannot be empty.";
             } else {
-                $upd = $pdo->prepare("UPDATE messes SET mess_name = ?, mess_logo = ? WHERE id = ?");
-                $upd->execute([$newMessName, $logoPath, $messId]);
+                $upd = $pdo->prepare("UPDATE messes SET mess_name = ?, mess_logo = ?, target_meal_cost = ? WHERE id = ?");
+                $upd->execute([$newMessName, $logoPath, $newTargetMealCost, $messId]);
                 $mess['mess_name'] = $newMessName;
                 $mess['mess_logo'] = $logoPath;
-                $flash = "Mess profile updated.";
+                $mess['target_meal_cost'] = $newTargetMealCost;
+                $targetMealCost = $newTargetMealCost;
+                $flash = "Mess profile updated (Target meal cost: " . fmtMoney($cur, $targetMealCost) . ").";
             }
         }
     }
@@ -701,6 +708,17 @@ foreach ($todayMealStmt->fetchAll() as $tm) {
     $todayMealsMap[$tm['user_id']] = $tm;
 }
 
+// Today's meal counts for the left sidebar Cook card (always based on $today)
+$todayMealCardStmt = $pdo->prepare("SELECT breakfast, lunch, dinner FROM meals WHERE mess_id = ? AND meal_date = ?");
+$todayMealCardStmt->execute([$messId, $today]);
+
+$todayPeriodCounts = ['b' => 0.0, 'l' => 0.0, 'd' => 0.0];
+foreach ($todayMealCardStmt->fetchAll() as $tmRow) {
+    $todayPeriodCounts['b'] += (float)($tmRow['breakfast'] ?? 0);
+    $todayPeriodCounts['l'] += (float)($tmRow['lunch'] ?? 0);
+    $todayPeriodCounts['d'] += (float)($tmRow['dinner'] ?? 0);
+}
+
 // Full Month Meal Chart Matrix (Day 1 to Days in Month)
 $daysInMonth = (int)date('t', strtotime($billingMonth . '-01'));
 $monthMealsStmt = $pdo->prepare("
@@ -786,6 +804,7 @@ if (!is_file($dailyBackupFile)) {
     <link href="dashboard/assets/dashboard.css" rel="stylesheet">
 </head>
 <body>
+    
 
 <?php require __DIR__ . '/dashboard/partials/navbar.php'; ?>
 
@@ -802,14 +821,14 @@ if (!is_file($dailyBackupFile)) {
         <?php endif; ?>
 
         <?php if ($flash): ?>
-            <div class="alert alert-success alert-dismissible fade show rounded-3 py-2.5 fw-semibold" role="alert">
+            <div class="alert alert-success alert-dismissible fade show rounded-3 py-3 fw-semibold" role="alert">
                 <i class="bi bi-check-circle-fill me-1"></i> <?= e($flash) ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif; ?>
 
         <?php if ($flashError !== ''): ?>
-            <div class="alert alert-danger alert-dismissible fade show rounded-3 py-2.5 fw-semibold" role="alert">
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 py-3 fw-semibold" role="alert">
                 <i class="bi bi-shield-exclamation me-1"></i> <?= e($flashError) ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>

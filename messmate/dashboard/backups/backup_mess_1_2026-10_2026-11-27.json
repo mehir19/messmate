@@ -1,0 +1,190 @@
+{
+    "generated_at": "2026-11-27 07:49:31",
+    "mess": {
+        "id": 1,
+        "name": "Nirjon Mess",
+        "code": "MESS-8511"
+    },
+    "month": "2026-10",
+    "summary": {
+        "manager_prev_balance": 0,
+        "total_deposits": 0,
+        "total_funds": 0,
+        "total_grocery": 0,
+        "total_expenses": 0,
+        "manager_cash_grocery": 0,
+        "member_pocket_grocery_total": 0,
+        "total_misc": 0,
+        "total_meals": 0,
+        "cost_per_meal": 0,
+        "misc_per_member": 0,
+        "cash_held": 0,
+        "members": {
+            "1": {
+                "prev": 0,
+                "deposit": 0,
+                "grocery": 0,
+                "meals": 0,
+                "meal_cost": 0,
+                "misc": 0,
+                "net": 0
+            },
+            "13": {
+                "prev": 500,
+                "deposit": 0,
+                "grocery": 0,
+                "meals": 0,
+                "meal_cost": 0,
+                "misc": 0,
+                "net": 500
+            },
+            "14": {
+                "prev": 0,
+                "deposit": 0,
+                "grocery": 0,
+                "meals": 0,
+                "meal_cost": 0,
+                "misc": 0,
+                "net": 0
+            },
+            "15": {
+                "prev": 0,
+                "deposit": 0,
+                "grocery": 0,
+                "meals": 0,
+                "meal_cost": 0,
+                "misc": 0,
+                "net": 0
+            },
+            "16": {
+                "prev": 0,
+                "deposit": 0,
+                "grocery": 0,
+                "meals": 0,
+                "meal_cost": 0,
+                "misc": 0,
+                "net": 0
+            },
+            "17": {
+                "prev": -2000,
+                "deposit": 0,
+                "grocery": 0,
+                "meals": 0,
+                "meal_cost": 0,
+                "misc": 0,
+                "net": -2000
+            }
+        }
+    },
+    "members": [
+        {
+            "id": 1,
+            "mess_id": 1,
+            "member_code": "M-101",
+            "room_no": "601",
+            "seat_no": "B",
+            "full_name": "Mihir Mondal",
+            "email": "codepedant@gmail.com",
+            "password_hash": "$2y$10$P3hHuRtNU5MTfT4Vl3KLY.U0r3rlwlNlLQcWa5K2MZ.HOyW7vRehC",
+            "role": "manager",
+            "previous_balance": "0.00",
+            "is_active": 1,
+            "created_at": "2026-11-21 09:00:12"
+        },
+        {
+            "id": 13,
+            "mess_id": 1,
+            "member_code": "M-102",
+            "room_no": null,
+            "seat_no": null,
+            "full_name": "Al Imran",
+            "email": null,
+            "password_hash": "$2y$10$Q7PIf3kWqUxj2F8WOL5zUuI4Gy26ivyORUqX5kBuSueYUjYSBXKam",
+            "role": "member",
+            "previous_balance": "500.00",
+            "is_active": 1,
+            "created_at": "2026-11-21 22:06:52"
+        },
+        {
+            "id": 14,
+            "mess_id": 1,
+            "member_code": "M-103",
+            "room_no": null,
+            "seat_no": null,
+            "full_name": "Badhon",
+            "email": null,
+            "password_hash": "$2y$10$tfWp8v.jaZIUhr4Yq9GwDe5iga75YZ3saGcUKLL7rTlWuNGYsD8H2",
+            "role": "member",
+            "previous_balance": "0.00",
+            "is_active": 1,
+            "created_at": "2026-11-21 22:08:11"
+        },
+        {
+            "id": 15,
+            "mess_id": 1,
+            "member_code": "M-104",
+            "room_no": null,
+            "seat_no": null,
+            "full_name": "Asim",
+            "email": null,
+            "password_hash": "$2y$10$kikPcAZKRuChHfWJNryE.e3I3ka6pttrycr0JawN6XivWsnShEgqW",
+            "role": "member",
+            "previous_balance": "0.00",
+            "is_active": 1,
+            "created_at": "2026-11-22 20:36:16"
+        },
+        {
+            "id": 16,
+            "mess_id": 1,
+            "member_code": "M-105",
+            "room_no": null,
+            "seat_no": null,
+            "full_name": "Mih Imran",
+            "email": null,
+            "password_hash": "$2y$10$ZVe9lPQvUlIgNxPpBEJtguq7wUz\/DRNHZYwxnNKhG3ACLs5B76qBu",
+            "role": "member",
+            "previous_balance": "0.00",
+            "is_active": 1,
+            "created_at": "2026-11-22 20:36:30"
+        },
+        {
+            "id": 17,
+            "mess_id": 1,
+            "member_code": "M-106",
+            "room_no": null,
+            "seat_no": null,
+            "full_name": "Mahfuz",
+            "email": null,
+            "password_hash": "$2y$10$r2NV942hmR7JoS3sW7or9uerASIA\/xNTCY5aptA\/7bLhXrTNqEyBy",
+            "role": "member",
+            "previous_balance": "-2000.00",
+            "is_active": 1,
+            "created_at": "2026-11-22 20:37:15"
+        }
+    ],
+    "deposits": [],
+    "expenses": [],
+    "meal_matrix": [],
+    "roster": [
+        {
+            "id": 1,
+            "mess_id": 1,
+            "assigned_user_id": 1,
+            "duty_date": "2026-11-21",
+            "items_note": "",
+            "status": "completed",
+            "full_name": "Mihir Mondal",
+            "member_code": "M-101"
+        },
+        {
+            "id": 2,
+            "mess_id": 1,
+            "assigned_user_id": 13,
+            "duty_date": "2026-11-23",
+            "items_note": "",
+            "status": "upcoming",
+            "full_name": "Al Imran",
+            "member_code": "M-102"
+        }
+    ]
+}

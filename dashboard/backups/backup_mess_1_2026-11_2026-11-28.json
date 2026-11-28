@@ -8,71 +8,71 @@
     "month": "2026-11",
     "summary": {
         "manager_prev_balance": 0,
-        "total_deposits": 26800,
-        "total_funds": 32000,
-        "total_grocery": 12000,
-        "total_expenses": 27600,
-        "manager_cash_grocery": 6800,
-        "member_pocket_grocery_total": 5200,
-        "total_misc": 15600,
-        "total_meals": 20,
-        "cost_per_meal": 600,
-        "misc_per_member": 2600,
-        "cash_held": 4400,
+        "total_deposits": 23000,
+        "total_funds": 24350,
+        "total_grocery": 4350,
+        "total_expenses": 23350,
+        "manager_cash_grocery": 3000,
+        "member_pocket_grocery_total": 1350,
+        "total_misc": 19000,
+        "total_meals": 37.5,
+        "cost_per_meal": 116,
+        "misc_per_member": 3166.6666666666665,
+        "cash_held": 1000,
         "members": {
             "1": {
                 "prev": 0,
                 "deposit": 11000,
-                "grocery": 500,
-                "meals": 4,
-                "meal_cost": 2400,
-                "misc": 2600,
-                "net": 6500
+                "grocery": 700,
+                "meals": 5.5,
+                "meal_cost": 638,
+                "misc": 3166.6666666666665,
+                "net": 7895.333333333334
             },
             "13": {
                 "prev": 500,
                 "deposit": 5000,
-                "grocery": 3000,
-                "meals": 4,
-                "meal_cost": 2400,
-                "misc": 2600,
-                "net": 3500
+                "grocery": 0,
+                "meals": 9,
+                "meal_cost": 1044,
+                "misc": 3166.6666666666665,
+                "net": 1289.333333333334
             },
             "14": {
                 "prev": 0,
-                "deposit": 1600,
-                "grocery": 1500,
-                "meals": 2,
-                "meal_cost": 1200,
-                "misc": 2600,
-                "net": -700
+                "deposit": 0,
+                "grocery": 650,
+                "meals": 4,
+                "meal_cost": 464,
+                "misc": 3166.6666666666665,
+                "net": -2980.6666666666665
             },
             "15": {
                 "prev": 0,
                 "deposit": 6000,
                 "grocery": 0,
-                "meals": 2,
-                "meal_cost": 1200,
-                "misc": 2600,
-                "net": 2200
+                "meals": 4,
+                "meal_cost": 464,
+                "misc": 3166.6666666666665,
+                "net": 2369.3333333333335
             },
             "16": {
                 "prev": 0,
                 "deposit": 1000,
                 "grocery": 0,
-                "meals": 4,
-                "meal_cost": 2400,
-                "misc": 2600,
-                "net": -4000
+                "meals": 9,
+                "meal_cost": 1044,
+                "misc": 3166.6666666666665,
+                "net": -3210.666666666666
             },
             "17": {
                 "prev": -2000,
-                "deposit": 2200,
-                "grocery": 200,
-                "meals": 4,
-                "meal_cost": 2400,
-                "misc": 2600,
-                "net": -4600
+                "deposit": 0,
+                "grocery": 0,
+                "meals": 6,
+                "meal_cost": 696,
+                "misc": 3166.6666666666665,
+                "net": -5862.666666666666
             }
         }
     },
@@ -400,47 +400,77 @@
     ],
     "expenses": [
         {
-            "id": 13,
+            "id": 21,
             "mess_id": 1,
             "paid_by_user_id": 1,
             "funding_source": "member_pocket",
-            "category": "misc",
-            "description": "Cooker Salary",
-            "amount": "3600.00",
-            "expense_date": "2026-11-23",
+            "category": "grocery",
+            "description": "Rice",
+            "amount": "200.00",
+            "expense_date": "2026-11-27",
             "status": "approved",
             "billing_month": "2026-11",
-            "created_at": "2026-11-23 10:39:22",
+            "created_at": "2026-11-27 22:10:52",
             "full_name": "Mihir Mondal",
             "member_code": "M-101"
         },
         {
-            "id": 12,
+            "id": 20,
             "mess_id": 1,
-            "paid_by_user_id": 17,
+            "paid_by_user_id": 1,
             "funding_source": "member_pocket",
-            "category": "grocery",
-            "description": "Oil",
-            "amount": "200.00",
-            "expense_date": "2026-11-23",
+            "category": "misc",
+            "description": "Cook Salary",
+            "amount": "3000.00",
+            "expense_date": "2026-11-27",
             "status": "approved",
             "billing_month": "2026-11",
-            "created_at": "2026-11-23 10:37:51",
-            "full_name": "Mahfuz",
-            "member_code": "M-106"
+            "created_at": "2026-11-27 12:36:19",
+            "full_name": "Mihir Mondal",
+            "member_code": "M-101"
         },
         {
-            "id": 11,
+            "id": 19,
+            "mess_id": 1,
+            "paid_by_user_id": 1,
+            "funding_source": "member_pocket",
+            "category": "misc",
+            "description": "Cook Salary",
+            "amount": "3000.00",
+            "expense_date": "2026-11-27",
+            "status": "approved",
+            "billing_month": "2026-11",
+            "created_at": "2026-11-27 12:27:55",
+            "full_name": "Mihir Mondal",
+            "member_code": "M-101"
+        },
+        {
+            "id": 18,
+            "mess_id": 1,
+            "paid_by_user_id": 1,
+            "funding_source": "member_pocket",
+            "category": "misc",
+            "description": "Cook Bonus",
+            "amount": "1000.00",
+            "expense_date": "2026-11-27",
+            "status": "approved",
+            "billing_month": "2026-11",
+            "created_at": "2026-11-27 12:27:07",
+            "full_name": "Mihir Mondal",
+            "member_code": "M-101"
+        },
+        {
+            "id": 17,
             "mess_id": 1,
             "paid_by_user_id": 1,
             "funding_source": "manager_cash",
             "category": "grocery",
             "description": "Grocery",
             "amount": "3000.00",
-            "expense_date": "2026-11-23",
+            "expense_date": "2026-11-27",
             "status": "approved",
             "billing_month": "2026-11",
-            "created_at": "2026-11-23 10:36:59",
+            "created_at": "2026-11-27 12:25:37",
             "full_name": "Mihir Mondal",
             "member_code": "M-101"
         },
@@ -466,7 +496,7 @@
             "funding_source": "member_pocket",
             "category": "grocery",
             "description": "Oil + Salt + Rice",
-            "amount": "700.00",
+            "amount": "650.00",
             "expense_date": "2026-11-22",
             "status": "approved",
             "billing_month": "2026-11",
@@ -538,22 +568,28 @@
     "meal_matrix": {
         "1": {
             "21": 2,
-            "22": 2
+            "22": 2,
+            "27": 1.5
         },
         "13": {
-            "22": 4
+            "22": 4,
+            "27": 5
         },
         "14": {
-            "22": 2
+            "22": 2,
+            "27": 2
         },
         "15": {
-            "22": 2
+            "22": 2,
+            "27": 2
         },
         "16": {
-            "22": 4
+            "22": 4,
+            "27": 5
         },
         "17": {
-            "22": 4
+            "22": 4,
+            "27": 2
         }
     },
     "roster": [

@@ -155,7 +155,7 @@
                         $currEffAmt = $origAmt + $adjAmt;
                     ?>
                     <tr class="<?= $isCorr ? 'table-warning' : '' ?>">
-                        <td class="text-muted small text-nowrap"><?= date('M d, H:i', strtotime($dp['created_at'])) ?></td>
+                        <td class="text-muted small text-nowrap"><?= fmtDateDmy($dp['created_at'], true) ?></td>
                         <td class="fw-semibold"><?= e($dp['full_name']) ?> <span class="text-muted">(<?= e($dp['member_code']) ?>)</span></td>
                         <td>
                             <span class="badge <?= $isCorr ? 'bg-warning text-dark' : 'bg-success-subtle text-success' ?>">

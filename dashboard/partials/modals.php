@@ -28,9 +28,19 @@
                     <input type="text" name="mess_name" value="<?= e($mess['mess_name']) ?>" required class="form-control">
                 </div>
 
-                <div>
+                <div class="mb-3">
                     <label class="form-label small fw-semibold">Mess Icon / Image</label>
                     <input type="file" name="mess_logo" accept="image/jpeg,image/png,image/webp,image/gif" class="form-control">
+                </div>
+
+                <div>
+                    <label class="form-label small fw-semibold">Target Meal Cost Threshold (Warning &gt; Target, Danger &gt; Target*1.2)</label>
+                    <input type="number"
+                        name="target_meal_cost"
+                        step="0.01"
+                        min="0"
+                        value="<?= e((string)$targetMealCost) ?>"
+                        class="form-control">
                 </div>
             </div>
             <div class="modal-footer">

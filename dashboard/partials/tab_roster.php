@@ -1,3 +1,4 @@
+
 <div class="tab-pane fade <?= $activeTab === 'roster' ? 'show active' : '' ?>" id="tabRoster">
     <div class="card-clean p-4">
         <div class="mb-3">
@@ -54,8 +55,8 @@
                         $startDate = (string)$r['duty_date'];
                         $endDate   = !empty($r['duty_end_date']) ? (string)$r['duty_end_date'] : '';
                         $dateRangeText = ($endDate !== '' && $endDate !== $startDate)
-                            ? e($startDate) . ' <span class="text-muted">→</span> ' . e($endDate)
-                            : e($startDate);
+                            ? e(fmtDateDmy($startDate)) . ' <span class="text-muted">→</span> ' . e(fmtDateDmy($endDate))
+                            : e(fmtDateDmy($startDate));
                         $badgeClass = match ($st) {
                             'completed' => 'bg-success text-white',
                             'running'   => 'bg-primary text-white',

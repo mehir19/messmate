@@ -2,8 +2,11 @@
 require 'db.php';
 
 $error = '';
+$activeLoginTab = 'manager';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $loginType = $_POST['login_type'] ?? 'manager';
+    $activeLoginTab = in_array($loginType, ['manager', 'member', 'cook'], true) ? $loginType : 'manager';
 
     if ($loginType === 'manager') {
         $email    = trim($_POST['email'] ?? '');
@@ -13,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password_hash'])) {
+            unset($_SESSION['cook_mess_id']);
             $_SESSION['user_id'] = (int)$user['id'];
             $_SESSION['mess_id'] = (int)$user['mess_id'];
             $_SESSION['role']    = $user['role'];
@@ -20,6 +24,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         $error = "Invalid email or password.";
+    } elseif ($loginType === 'cook') {
+        $messCode = strtoupper(trim($_POST['mess_code'] ?? ''));
+        $cookPin  = trim($_POST['cook_pin'] ?? '');
+        $stmt = $pdo->prepare("SELECT * FROM messes WHERE UPPER(mess_code) = ? LIMIT 1");
+        $stmt->execute([$messCode]);
+        $mess = $stmt->fetch();
+
+        $expectedPin = (string)($mess['cook_pin'] ?? '1111');
+        if ($mess && hash_equals($expectedPin, $cookPin)) {
+            unset($_SESSION['user_id'], $_SESSION['mess_id'], $_SESSION['role']);
+            $_SESSION['cook_mess_id'] = (int)$mess['id'];
+            header("Location: cooking.php");
+            exit;
+        }
+        $error = "Invalid Mess Code or Cook PIN.";
     } else {
         $messCode   = strtoupper(trim($_POST['mess_code'] ?? ''));
         $memberCode = strtoupper(trim($_POST['member_code'] ?? ''));
@@ -29,6 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password_hash'])) {
+            unset($_SESSION['cook_mess_id']);
             $_SESSION['user_id'] = (int)$user['id'];
             $_SESSION['mess_id'] = (int)$user['mess_id'];
             $_SESSION['role']    = $user['role'];
@@ -62,10 +82,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <ul class="nav nav-pills nav-fill bg-light p-1 rounded-3 mb-4" id="loginTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active fw-semibold small" data-bs-toggle="pill" data-bs-target="#mgrPane" type="button">Manager Login</button>
+                        <button class="nav-link <?= $activeLoginTab === 'manager' ? 'active' : '' ?> fw-semibold small" data-bs-toggle="pill" data-bs-target="#mgrPane" type="button">Manager Login</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link fw-semibold small" data-bs-toggle="pill" data-bs-target="#memPane" type="button">Member ID Login</button>
+                        <button class="nav-link <?= $activeLoginTab === 'member' ? 'active' : '' ?> fw-semibold small" data-bs-toggle="pill" data-bs-target="#memPane" type="button">Member ID Login</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link <?= $activeLoginTab === 'cook' ? 'active' : '' ?> fw-semibold small" data-bs-toggle="pill" data-bs-target="#cookPane" type="button">Cook Login</button>
                     </li>
                 </ul>
 
@@ -75,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="tab-content">
                     <!-- Manager Tab -->
-                    <div class="tab-pane fade show active" id="mgrPane">
+                    <div class="tab-pane fade <?= $activeLoginTab === 'manager' ? 'show active' : '' ?>" id="mgrPane">
                         <form method="POST">
                             <input type="hidden" name="login_type" value="manager">
                             <div class="mb-3">
@@ -91,17 +114,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <!-- Member Tab -->
-                    <div class="tab-pane fade" id="memPane">
+                    <div class="tab-pane fade <?= $activeLoginTab === 'member' ? 'show active' : '' ?>" id="memPane">
                         <form method="POST">
                             <input type="hidden" name="login_type" value="member">
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
                                     <label class="form-label small fw-semibold text-uppercase text-secondary">Mess Code</label>
-                                    <input type="text" name="mess_code" class="form-control" required placeholder="MESS-4821">
+                                    <input type="text" name="mess_code" class="form-control" required placeholder="MESS-8511" value="MESS-">
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label small fw-semibold text-uppercase text-secondary">Member ID</label>
-                                    <input type="text" name="member_code" class="form-control" required placeholder="M-102">
+                                    <input type="text" name="member_code" class="form-control" required placeholder="M-102" value="M-">
                                 </div>
                             </div>
                             <div class="mb-4">
@@ -109,6 +132,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <input type="password" name="password" class="form-control" required>
                             </div>
                             <button type="submit" class="btn btn-dark w-100 fw-semibold py-2">Sign In as Member</button>
+                        </form>
+                    </div>
+
+                    <!-- Cook Tab -->
+                    <div class="tab-pane fade <?= $activeLoginTab === 'cook' ? 'show active' : '' ?>" id="cookPane">
+                        <form method="POST">
+                            <input type="hidden" name="login_type" value="cook">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-uppercase text-secondary">Mess Code</label>
+                                <input type="text" name="mess_code" class="form-control" required placeholder="MESS-4821" value="MESS-">
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label small fw-semibold text-uppercase text-secondary">Cook PIN</label>
+                                <input type="password" name="cook_pin" class="form-control" required placeholder="Enter Cook PIN">
+                            </div>
+                            <button type="submit" class="btn btn-warning w-100 fw-semibold py-2 text-dark">Sign In as Cook</button>
                         </form>
                     </div>
                 </div>

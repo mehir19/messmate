@@ -108,7 +108,7 @@
 
         <!-- Bottom Logout -->
         <div class="pt-3 mt-3 border-top">
-            <a href="logout.php" class="btn btn-outline-secondary btn-sm w-100 fw-semibold py-2">
+            <a href="logout.php" class="btn btn-danger btn-sm w-100 fw-semibold py-2">
                 <i class="bi bi-box-arrow-right me-1"></i> Logout
             </a>
         </div>
@@ -122,14 +122,14 @@
         <span class="badge bg-light text-dark border font-monospace"><?= e($billingMonth) ?></span>
     </div>
 
-    <div class="d-flex align-items-center gap-2 flex-wrap">
+    <div class="d-flex align-items-center gap-2 flex-wrap p-2 rounded-3 bg-light border">
         <form method="GET" class="d-flex align-items-center mb-0">
             <input type="hidden" name="tab" value="<?= e($activeTab) ?>">
             <input type="month" name="month" value="<?= e($billingMonth) ?>" onchange="this.form.submit()"
-                   class="form-control form-control-sm fw-semibold" style="width:155px;" title="Select Billing Month">
+                   class="form-control form-control-sm btn btn-outline-primary btn-sm fw-semibold" style="width:155px;" title="Select Billing Month">
         </form>
 
-        <button class="btn btn-outline-secondary btn-sm position-relative fw-semibold"
+        <button class="btn btn-outline-info btn-sm position-relative fw-semibold"
                 type="button" data-bs-toggle="offcanvas" data-bs-target="#drawerNotify">
             <i class="bi bi-bell-fill"></i> <span class="d-none d-sm-inline">Chat &amp; Approvals</span>
             <?php if ($totalNotifications > 0): ?>

@@ -62,7 +62,7 @@
                                 $src = $g['funding_source'] ?? 'member_pocket';
                             ?>
                             <tr>
-                                <td><?= e($g['description']) ?><br><span class="text-muted small"><?= e($g['expense_date']) ?></span></td>
+                                <td><?= e($g['description']) ?><br><span class="text-muted small"><?= e(fmtDateDmy($g['expense_date'])) ?></span></td>
                                 <td>
                                     <?php if ($src === 'manager_cash'): ?>
                                         <span class="badge bg-dark-subtle text-dark">Manager Cash</span>
